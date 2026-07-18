@@ -1,6 +1,6 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
-import { useMMKVString } from "react-native-mmkv"; // Modern reactivity hook
 import { Colors, darkColors, lightColors } from "./theme";
 
 type ThemeMode = "light" | "dark";
@@ -18,26 +18,30 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const systemColorScheme = useColorScheme();
-
-  // This automatically reactive hook replaces the manual storage.get/set lines completely!
-  const [savedTheme, setSavedTheme] = useMMKVString("user-theme");
   const [theme, setThemeState] = useState<ThemeMode>("dark");
 
   useEffect(() => {
-    if (savedTheme === "light" || savedTheme === "dark") {
-      setThemeState(savedTheme);
-    } else if (systemColorScheme) {
-      setThemeState(systemColorScheme);
-    }
-  }, [savedTheme, systemColorScheme]);
+    // Load the saved theme from standard device storage
+    const loadTheme = async () => {
+      const savedTheme = await AsyncStorage.getItem("user-theme");
+      if (savedTheme === "light" || savedTheme === "dark") {
+        setThemeState(savedTheme);
+      } else if (systemColorScheme) {
+        setThemeState(systemColorScheme);
+      }
+    };
+    loadTheme();
+  }, [systemColorScheme]);
 
-  const toggleTheme = () => {
+  const toggleTheme = async () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
-    setSavedTheme(nextTheme);
+    setThemeState(nextTheme);
+    await AsyncStorage.setItem("user-theme", nextTheme);
   };
 
-  const setTheme = (mode: ThemeMode) => {
-    setSavedTheme(mode);
+  const setTheme = async (mode: ThemeMode) => {
+    setThemeState(mode);
+    await AsyncStorage.setItem("user-theme", mode);
   };
 
   const colors = theme === "dark" ? darkColors : lightColors;
