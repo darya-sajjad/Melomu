@@ -1,22 +1,119 @@
+import { dbAsync } from "@/constants/Database";
+import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import * as DocumentPicker from "expo-document-picker"; // <-- Clean, proper package name
 import * as FileSystem from "expo-file-system/legacy";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 
-import { dbAsync } from "@/constants/Database";
-import { useTheme } from "@/constants/ThemeContext";
-
 export default function SettingsScreen() {
   const { colors, theme, toggleTheme } = useTheme();
+  const isFocused = useIsFocused();
   const [isImporting, setIsImporting] = useState(false);
+
+  const [dbSongCount, setDbSongCount] = useState(0);
+  const [storageSizeMB, setStorageSizeMB] = useState("0.0");
+
+  /**
+   * Calculates total file weight and database entries to show live inside
+   * our hidden developer panel.
+   */
+  const calculateDiagnosticMetrics = async () => {
+    try {
+      const db = await dbAsync;
+
+      // 1. Query live SQLite row counts
+      const countResult: any = await db.getFirstAsync(
+        "SELECT COUNT(*) as total FROM songs",
+      );
+      const totalSongs = countResult?.total || 0;
+      setDbSongCount(totalSongs);
+
+      // 2. Scan the local sandboxed folder and add up file sizes
+      const appDirectory = FileSystem.documentDirectory;
+      if (appDirectory) {
+        const files = await FileSystem.readDirectoryAsync(appDirectory);
+        let totalBytes = 0;
+
+        for (const fileName of files) {
+          if (
+            fileName.endsWith(".mp3") ||
+            fileName.endsWith(".m4a") ||
+            fileName.endsWith(".wav") ||
+            fileName.endsWith(".flac")
+          ) {
+            const fileInfo = await FileSystem.getInfoAsync(
+              `${appDirectory}${fileName}`,
+            );
+            if (fileInfo.exists) {
+              totalBytes += fileInfo.size;
+            }
+          }
+        }
+        // Convert raw bytes mathematically into Megabytes formatted to 1 decimal place
+        setStorageSizeMB((totalBytes / (1024 * 1024)).toFixed(1));
+      }
+    } catch (error) {
+      console.error("Failed to compile diagnostic metrics:", error);
+    }
+  };
+
+  // Automatically recalculate metrics whenever the user clicks open the Settings tab
+  useEffect(() => {
+    if (isFocused) {
+      calculateDiagnosticMetrics();
+    }
+  }, [isFocused]);
+
+  const handleNukeDatabaseCache = () => {
+    Alert.alert(
+      "☢️ Nuke Database & Cache?",
+      "This developer action will permanently erase all imported songs from your device storage and wipe SQLite rows completely.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Wipe Everything",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const db = await dbAsync;
+
+              // Wipes all rows out of your SQLite table
+              await db.runAsync("DELETE FROM songs");
+
+              // Delete the raw files from the storage folder path
+              const appDirectory = FileSystem.documentDirectory;
+              if (appDirectory) {
+                const files = await FileSystem.readDirectoryAsync(appDirectory);
+                for (const fileName of files) {
+                  await FileSystem.deleteAsync(`${appDirectory}${fileName}`, {
+                    idempotent: true,
+                  });
+                }
+              }
+
+              Alert.alert(
+                "Clean Slate ✨",
+                "All files and database rows successfully erased!",
+              );
+              calculateDiagnosticMetrics(); // Refresh dashboard instantly
+            } catch (error) {
+              console.error("Failed to complete system wipe:", error);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const handleImportMusicTrack = async () => {
     try {
@@ -34,44 +131,28 @@ export default function SettingsScreen() {
       }
 
       setIsImporting(true);
-
-      // Extract the single target file asset safely out of the array
       const targetAsset = selectedFile.assets[0];
+      const appStorageDirectory =
+        FileSystem.documentDirectory || FileSystem.cacheDirectory;
 
-      // Read the stable string path from the legacy system
-      const appStorageDirectory = FileSystem.documentDirectory;
-
-      // 🛠️ FIX: Graceful check instead of throwing a fatal error
       if (!appStorageDirectory) {
-        setIsImporting(false);
-        Alert.alert(
-          "Environment Limitation",
-          "The native file sandbox is unavailable (Web/Expo Go dev sandbox restriction). To test file transfers, please switch to a native Android/iOS phone environment.",
-        );
-        return; // Exits function cleanly without crashing the console
+        throw new Error("Application storage sandbox path is unavailable.");
       }
 
-      // Generate a clean destination path ensuring it ends with a clean string name
       const cleanFileName = targetAsset.name.replace(/\s+/g, "_");
       const permanentFilePath = `${appStorageDirectory}${cleanFileName}`;
 
-      console.log("🔄 Attempting secure copy from:", targetAsset.uri);
-      console.log("🔄 Target sandbox path destination:", permanentFilePath);
-
-      // Copy the complete raw sound file into permanent storage memory
       await FileSystem.copyAsync({
         from: targetAsset.uri,
         to: permanentFilePath,
       });
 
-      // Clean up metadata strings for our user interface display card labels
       const cleanTitle = targetAsset.name
         .replace(/\.(mp3|m4a|wav|flac)$/i, "")
         .replace(/_/g, " ");
       const uniqueSongId = `user_track_${Date.now()}`;
       const fallbackDuration = 185;
 
-      // Save the record inside local SQLite rows
       const db = await dbAsync;
       await db.runAsync(
         `INSERT INTO songs (id, file_path, title, artist, album, genre, duration) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -91,6 +172,7 @@ export default function SettingsScreen() {
         "Success 🎉",
         `"${cleanTitle}" added to your library! Check your Library tab.`,
       );
+      calculateDiagnosticMetrics(); // Refresh stats after importing!
     } catch (error) {
       console.error("❌ Failed to pick or import audio track:", error);
       setIsImporting(false);
@@ -99,10 +181,13 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.scrollPadding}
+    >
       <Text style={[styles.title, { color: colors.text }]}>App Settings</Text>
 
-      {/* Row Block 1: Theme Toggling Action */}
+      {/* User Section Controls */}
       <View
         style={[
           styles.settingRow,
@@ -112,7 +197,7 @@ export default function SettingsScreen() {
         <View style={styles.settingMeta}>
           <Ionicons name="moon-outline" size={22} color={colors.text} />
           <Text style={[styles.settingLabel, { color: colors.text }]}>
-            Dark Mode Mode
+            Dark Mode
           </Text>
         </View>
         <TouchableOpacity
@@ -126,7 +211,6 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Row Block 2: Storage Data Scanning Action */}
       <View
         style={[
           styles.settingRow,
@@ -136,10 +220,9 @@ export default function SettingsScreen() {
         <View style={styles.settingMeta}>
           <Ionicons name="cloud-upload-outline" size={22} color={colors.text} />
           <Text style={[styles.settingLabel, { color: colors.text }]}>
-            Scan & Add Local Music
+            Import Music Track
           </Text>
         </View>
-
         <TouchableOpacity
           style={[styles.importButton, { backgroundColor: colors.primary }]}
           onPress={handleImportMusicTrack}
@@ -156,12 +239,53 @@ export default function SettingsScreen() {
           )}
         </TouchableOpacity>
       </View>
-    </View>
+
+      {/* --- HIDDEN CORE DEVELOPER DIAGNOSTIC PANEL --- */}
+      <Text style={[styles.devHeading, { color: colors.textSecondary }]}>
+        🛠️ Developer Diagnostics
+      </Text>
+
+      <View
+        style={[
+          styles.devPanel,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
+        <View style={styles.metricItem}>
+          <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
+            Indexed SQL Rows:
+          </Text>
+          <Text style={[styles.metricValue, { color: colors.text }]}>
+            {dbSongCount} Tracks
+          </Text>
+        </View>
+
+        <View style={styles.metricItem}>
+          <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
+            Sandbox Disk Weight:
+          </Text>
+          <Text style={[styles.metricValue, { color: colors.text }]}>
+            {storageSizeMB} MB
+          </Text>
+        </View>
+
+        {/* The Power Nuke Button */}
+        <TouchableOpacity
+          style={styles.nukeButton}
+          onPress={handleNukeDatabaseCache}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="trash-bin-outline" size={16} color="#FFFFFF" />
+          <Text style={styles.nukeButtonText}>Nuke Cache & Data</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
+  container: { flex: 1 },
+  scrollPadding: { padding: 20, paddingBottom: 140 },
   title: { fontSize: 24, fontWeight: "700", marginBottom: 24, marginTop: 10 },
   settingRow: {
     flexDirection: "row",
@@ -171,11 +295,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
   },
   settingMeta: { flexDirection: "row", alignItems: "center" },
   settingLabel: { fontSize: 16, fontWeight: "500", marginLeft: 12 },
@@ -193,5 +312,44 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 13,
     marginLeft: 2,
+  },
+
+  // Dev Styles
+  devHeading: {
+    fontSize: 13,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginTop: 24,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  devPanel: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: "dashed",
+  }, // Dashed border indicates engineering wireframes
+  metricItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  metricLabel: { fontSize: 14, fontWeight: "500" },
+  metricValue: { fontSize: 14, fontWeight: "700" },
+  nukeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#D32F2F",
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  nukeButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    marginLeft: 6,
+    fontSize: 13,
   },
 });
