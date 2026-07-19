@@ -69,6 +69,13 @@ export default function TabLayout() {
             ),
           }}
         />
+        <Tabs.Screen
+          name="playlist"
+          options={{
+            href: null, // Hides the playlist icon label from displaying on the bar buttons strip
+            headerShown: false, // Cleaner layout look
+          }}
+        />
       </Tabs>
       <MiniPlayer />
     </>

@@ -7,6 +7,8 @@ import { AudioProvider } from "@/constants/AudioContext";
 import { initializeDatabase, seedMockSongs } from "@/constants/Database";
 import { ThemeProvider, useTheme } from "@/constants/ThemeContext";
 
+import MiniPlayer from "@/components/MiniPlayer"; // <-- Add this line!
+
 export const unstable_settings = {
   anchor: "(tabs)",
 };
@@ -26,6 +28,7 @@ function AppContent() {
         setIsReady(true);
       }
     }
+
     setupApp();
   }, []);
 
@@ -38,11 +41,13 @@ function AppContent() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
-          name="modal"
-          options={{ presentation: "modal", title: "Modal" }}
+          name="player"
+          options={{ presentation: "modal", headerShown: false }}
         />
       </Stack>
       <StatusBar style={context.theme === "dark" ? "light" : "dark"} />
+
+      <MiniPlayer />
     </>
   );
 }
@@ -51,7 +56,6 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AudioProvider>
-        {}
         <AppContent />
       </AudioProvider>
     </ThemeProvider>
