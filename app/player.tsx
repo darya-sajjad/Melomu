@@ -3,23 +3,43 @@ import { useAudio } from "@/constants/AudioContext";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
     Dimensions,
     Image,
+    Modal, // ✨ Fixed: Added missing ScrollView import
+    Platform, // ✨ Fixed: Added missing Modal import
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
 
-const { width } = Dimensions.get("window");
+// Extract layout dimension values safely
+const { width, height: screenHeight } = Dimensions.get("window");
 
 export default function FullPlayerScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { currentSong, isPlaying, position, duration, pauseSong, resumeSong } =
-    useAudio();
+  const {
+    currentSong,
+    isPlaying,
+    position,
+    duration,
+    currentLyrics,
+    pauseSong,
+    resumeSong,
+    reloadLyrics,
+  } = useAudio();
+
+  const [isLyricsVisible, setIsLyricsVisible] = useState(false);
+
+  useEffect(() => {
+    if (isLyricsVisible) {
+      reloadLyrics();
+    }
+  }, [isLyricsVisible, reloadLyrics]);
 
   if (!currentSong) {
     return (
@@ -41,17 +61,9 @@ export default function FullPlayerScreen() {
     100,
   );
 
-  const handlePlaybackToggle = async () => {
-    if (isPlaying) {
-      await pauseSong();
-    } else {
-      await resumeSong();
-    }
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Top Header Navigation Panel matching your Figma header rows */}
+      {/* 1. Top Header Navigation Panel */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -61,14 +73,14 @@ export default function FullPlayerScreen() {
           <Ionicons name="arrow-back" size={26} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Now Playing:
+          Now Playing
         </Text>
         <TouchableOpacity activeOpacity={0.7} style={styles.headerIcon}>
           <Ionicons name="ellipsis-vertical" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
 
-      {/* Main Centered Artwork Frame wrapper */}
+      {/* 2. Album Artwork Canvas */}
       <View style={styles.artworkContainer}>
         <Image
           source={placeholderIcon}
@@ -77,7 +89,7 @@ export default function FullPlayerScreen() {
         />
       </View>
 
-      {/* Text labels frame block stacked right above the control systems */}
+      {/* 3. Song Info Labels Row */}
       <View style={styles.metaBlock}>
         <Text
           style={[styles.songTitle, { color: colors.text }]}
@@ -93,7 +105,7 @@ export default function FullPlayerScreen() {
         </Text>
       </View>
 
-      {/* Precise Tracking Progress Deck */}
+      {/* 4. Progress Slider Deck */}
       <View style={styles.progressDeck}>
         <View
           style={[styles.progressTrack, { backgroundColor: colors.border }]}
@@ -105,7 +117,7 @@ export default function FullPlayerScreen() {
             ]}
           />
         </View>
-        <View style={styles.timeLabelsRow}>
+        <View style={timeLabelsRowStyles.row}>
           <Text style={[styles.timeText, { color: colors.textSecondary }]}>
             {formatTime(position)}
           </Text>
@@ -115,7 +127,7 @@ export default function FullPlayerScreen() {
         </View>
       </View>
 
-      {/* Main Audio Buttons Command Center Panel layout */}
+      {/* 5. Media Controls Deck */}
       <View style={styles.controlsRow}>
         <TouchableOpacity activeOpacity={0.7}>
           <Ionicons
@@ -124,29 +136,24 @@ export default function FullPlayerScreen() {
             color={colors.textSecondary}
           />
         </TouchableOpacity>
-
         <TouchableOpacity activeOpacity={0.7}>
           <Ionicons name="play-skip-back" size={26} color={colors.text} />
         </TouchableOpacity>
-
-        {/* Center Circular Button matching your custom colored bubble fill theme design */}
         <TouchableOpacity
           style={[styles.playButtonCircle, { backgroundColor: colors.primary }]}
-          onPress={handlePlaybackToggle}
+          onPress={isPlaying ? pauseSong : resumeSong}
           activeOpacity={0.8}
         >
           <Ionicons
             name={isPlaying ? "pause" : "play"}
             size={28}
             color="#FFFFFF"
-            style={!isPlaying ? { marginLeft: 3 } : null} // Centers play button visually
+            style={!isPlaying ? { marginLeft: 3 } : null}
           />
         </TouchableOpacity>
-
         <TouchableOpacity activeOpacity={0.7}>
           <Ionicons name="play-skip-forward" size={26} color={colors.text} />
         </TouchableOpacity>
-
         <TouchableOpacity activeOpacity={0.7}>
           <Ionicons
             name="repeat-outline"
@@ -156,22 +163,95 @@ export default function FullPlayerScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Footer Placeholder matching the layout text line positions from your image */}
-      <View style={styles.footerRow}>
+      {/* 6. Footer Lyrics Row Button */}
+      <TouchableOpacity
+        style={styles.footerRow}
+        activeOpacity={0.7}
+        onPress={() => setIsLyricsVisible(true)}
+      >
         <Text style={[styles.footerText, { color: colors.text }]}>Lyrics</Text>
-        <TouchableOpacity activeOpacity={0.7}>
-          <Ionicons name="menu" size={24} color={colors.text} />
-        </TouchableOpacity>
-      </View>
+        <Ionicons name="menu" size={24} color={colors.text} />
+      </TouchableOpacity>
+
+      <Modal
+        visible={isLyricsVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsLyricsVisible(false)}
+      >
+        <View style={styles.lyricsModalWrapper}>
+          {/* Top Panel: Navigation Row containing your Down Arrow */}
+          <View
+            style={[
+              styles.lyricsHeaderNav,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => setIsLyricsVisible(false)}
+              activeOpacity={0.7}
+              style={styles.backButtonTouchable}
+            >
+              {/* Down Arrow replaces the old horizontal grab bar for clean accessibility */}
+              <Ionicons name="chevron-down" size={28} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Main Content Area Canvas featuring your custom curved border layout shape */}
+          <View
+            style={[
+              styles.curvedLyricsCanvas,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            {/* Song Details Header inside the panel container */}
+            <View style={styles.panelMetaRow}>
+              <Text
+                style={[styles.panelSongTitle, { color: colors.text }]}
+                numberOfLines={1}
+              >
+                {currentSong.title}
+              </Text>
+              <Text
+                style={[
+                  styles.panelSongArtist,
+                  { color: colors.textSecondary },
+                ]}
+                numberOfLines={1}
+              >
+                {currentSong.artist || "Unknown Artist"}
+              </Text>
+            </View>
+
+            {/* Immersive Left-Aligned Lyrics Scroll Board Container */}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.lyricsScrollContainer}
+            >
+              <Text style={[styles.figmaLyricsText, { color: colors.text }]}>
+                {currentLyrics || "Searching for plain text lyrics lines..."}
+              </Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
+
+// Separate helper block to resolve multi-sentence structure naming collisions
+const timeLabelsRowStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 28,
-    paddingTop: 44, // Ensures spacing handles phone notch boundaries natively
+    paddingTop: Platform.OS === "ios" ? 54 : 34,
     paddingBottom: 24,
   },
   header: {
@@ -196,7 +276,7 @@ const styles = StyleSheet.create({
   albumArt: {
     width: width * 0.84,
     height: width * 0.84,
-    borderRadius: 16, // Subtle rounded edge framework matching your screenshot layout
+    borderRadius: 16,
   },
   metaBlock: {
     marginTop: 10,
@@ -215,7 +295,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   progressTrack: {
-    height: 4, // Sleek, thin tracking strip matching your layout
+    height: 4,
     borderRadius: 2,
     width: "100%",
     overflow: "hidden",
@@ -224,10 +304,6 @@ const styles = StyleSheet.create({
   progressFill: {
     height: "100%",
     borderRadius: 2,
-  },
-  timeLabelsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
   },
   timeText: {
     fontSize: 12,
@@ -251,12 +327,68 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderTopWidth: 0, // Keeps look completely clean as placeholder
     paddingTop: 12,
     paddingHorizontal: 4,
   },
   footerText: {
     fontSize: 18,
     fontWeight: "600",
+  },
+
+  //Lyrics View
+  lyricsModalWrapper: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  lyricsHeaderNav: {
+    height: Platform.OS === "ios" ? 110 : 95,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === "ios" ? 48 : 24,
+    marginTop: 0,
+  },
+  backButtonTouchable: {
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "flex-start",
+  },
+  // Creates the stylized curved canvas background layout wrapper under your navigation header rows
+  curvedLyricsCanvas: {
+    flex: 1,
+    borderTopLeftRadius: 32, // Curved borders matching your design profile specifications
+    borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    overflow: "hidden",
+  },
+  panelMetaRow: {
+    alignItems: "center",
+    paddingTop: 24,
+    paddingBottom: 12,
+    paddingHorizontal: 28,
+  },
+  panelSongTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 2,
+    textAlign: "center",
+  },
+  panelSongArtist: {
+    fontSize: 14,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  lyricsScrollContainer: {
+    paddingHorizontal: 28,
+    paddingTop: 16,
+    paddingBottom: 80,
+  },
+  figmaLyricsText: {
+    fontSize: 20,
+    fontWeight: "700",
+    lineHeight: 38,
+    textAlign: "left",
+    letterSpacing: -0.2,
   },
 });

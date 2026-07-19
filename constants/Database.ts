@@ -5,6 +5,8 @@ export const dbAsync = SQLite.openDatabaseAsync("melomu.db");
 export async function initializeDatabase() {
   const db = await dbAsync;
 
+  await db.execAsync("PRAGMA foreign_keys = ON;");
+
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
     
@@ -17,25 +19,25 @@ export async function initializeDatabase() {
       genre TEXT,
       duration INTEGER DEFAULT 0,
       custom_artwork_path TEXT,
-      play_count INTEGER DEFAULT 0,    -- Tracks how many times a song is loaded
-      last_played INTEGER DEFAULT 0,   -- Saves timestamp of the latest play
-      is_favorite INTEGER DEFAULT 0    -- Binary flag for user favorites (0 = False, 1 = True)
+      play_count INTEGER DEFAULT 0,
+      last_played INTEGER DEFAULT 0,
+      is_favorite INTEGER DEFAULT 0
     );
   `);
 
-  console.log("✅ Melomu Database & Smart Tracking initialized successfully!");
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS lyrics_cache (
+      song_id TEXT PRIMARY KEY NOT NULL,
+      lyrics_text TEXT,               
+      synced_lines TEXT,               
+      FOREIGN KEY(song_id) REFERENCES songs(id) ON DELETE CASCADE
+    );
+  `);
+
+  console.log("✅ Melomu Persistent Database completely active and locked!");
 }
 
 export async function seedMockSongs() {
-  const db = await dbAsync;
-
-  const existingSongs = await db.getAllAsync("SELECT * FROM songs");
-  if (existingSongs.length > 0) {
-    console.log(
-      `🎵 Database already seeded with ${existingSongs.length} songs.`,
-    );
-    return;
-  }
-
-  console.log("🎉 3 Mock songs successfully seeded into the library database!");
+  // We leave this completely empty so it never runs accidental overwrites on reload!
+  console.log("ℹ️ Dynamic User Collection Active. Skipping template seeding.");
 }
