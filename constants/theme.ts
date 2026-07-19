@@ -1,10 +1,10 @@
 export const darkColors = {
   background: "#1B4965", // Main screen background
-  surface: "#BEE9E8", // Card backgrounds, player controls row
-  primary: "#62B6CB", // Accent buttons, active tab icon, sliders
+  surface: "#62B6CB", // Card backgrounds, player controls row
+  primary: "#BEE9E8", // Accent buttons, active tab icon, sliders
   text: "#F5F5F5", // Main song titles, headers
-  textSecondary: "#62B6CB", // Artist names, duration timestamps
-  border: "#BEE9E8", // Subtle divider lines
+  textSecondary: "#BEE9E8", // Artist names, duration timestamps
+  border: "#62B6CB", // Subtle divider lines
 };
 
 export const lightColors = {

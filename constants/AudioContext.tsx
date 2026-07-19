@@ -14,6 +14,8 @@ interface Song {
 interface AudioContextType {
   currentSong: Song | null;
   isPlaying: boolean;
+  position: number;
+  duration: number;
   playSong: (song: Song) => Promise<void>;
   pauseSong: () => Promise<void>;
   resumeSong: () => Promise<void>;
@@ -27,6 +29,8 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const [soundInstance, setSoundInstance] = useState<Audio.Sound | null>(null);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(1);
 
   useEffect(() => {
     Audio.setAudioModeAsync({
@@ -51,19 +55,25 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsPlaying(false);
       setCurrentSong(song);
 
-      const sampleAudioUrl = "https://soundhelix.com";
+      const localAudioFile = require("@/assets/sample.mp3");
 
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: sampleAudioUrl },
-        { shouldPlay: true },
-      );
+      const { sound } = await Audio.Sound.createAsync(localAudioFile, {
+        shouldPlay: true,
+      });
 
       setSoundInstance(sound);
       setIsPlaying(true);
 
       sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setIsPlaying(false);
+        if (status.isLoaded) {
+          setPosition(status.positionMillis);
+          if (status.durationMillis) {
+            setDuration(status.durationMillis);
+          }
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+            setPosition(0);
+          }
         }
       });
     } catch (error) {
@@ -87,7 +97,15 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <AudioContext.Provider
-      value={{ currentSong, isPlaying, playSong, pauseSong, resumeSong }}
+      value={{
+        currentSong,
+        isPlaying,
+        position,
+        duration,
+        playSong,
+        pauseSong,
+        resumeSong,
+      }}
     >
       {children}
     </AudioContext.Provider>

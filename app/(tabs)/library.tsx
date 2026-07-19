@@ -1,3 +1,4 @@
+import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import React, { useEffect, useState } from "react";
@@ -6,6 +7,7 @@ import {
   FlatList,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -16,10 +18,12 @@ interface Song {
   album: string;
   genre: string;
   duration: number;
+  file_path: string;
 }
 
 export default function LibraryScreen() {
   const { colors } = useTheme();
+  const { playSong } = useAudio();
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -68,13 +72,14 @@ export default function LibraryScreen() {
           </Text>
         }
         renderItem={({ item }) => (
-          <View
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => playSong(item)}
             style={[
               styles.songCard,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
           >
-            {/* Left Block: Track metadata labels */}
             <View style={styles.metaContainer}>
               <Text
                 style={[styles.songTitle, { color: colors.text }]}
@@ -90,13 +95,12 @@ export default function LibraryScreen() {
               </Text>
             </View>
 
-            {/* Right Block: Audio tracking time status */}
             <Text
               style={[styles.durationText, { color: colors.textSecondary }]}
             >
               {formatTime(item.duration)}
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
       />
     </View>
