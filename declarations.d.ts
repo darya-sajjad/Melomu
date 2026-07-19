@@ -10,3 +10,18 @@ declare module "expo-file-system" {
   }): Promise<void>;
   export function readDirectoryAsync(dirUri: string): Promise<string[]>;
 }
+
+declare module "*.png" {
+  const value: number;
+  export default value;
+}
+
+declare module "*.jpg" {
+  const value: number;
+  export default value;
+}
+
+declare module "*.jpeg" {
+  const value: number;
+  export default value;
+}

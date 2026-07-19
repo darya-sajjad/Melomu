@@ -2,10 +2,12 @@ import placeholderIcon from "@/assets/icon.png";
 import { useAudio } from "@/constants/AudioContext";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function MiniPlayer() {
+  const router = useRouter();
   const { colors } = useTheme();
   const { currentSong, isPlaying, position, duration, pauseSong, resumeSong } =
     useAudio();
@@ -26,19 +28,18 @@ export default function MiniPlayer() {
   );
 
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => router.push("/player")} // This slides up your new app/player.tsx screen!
       style={[
         styles.container,
-        { backgroundColor: colors.surface, borderTopColor: colors.border },
+        { backgroundColor: colors.surface, borderColor: colors.border },
       ]}
     >
-      <View style={styles.artworkShadow}>
-        <Image
-          source={placeholderIcon} // Uses your default icon for now as placeholder
-          style={styles.artwork}
-        />
-      </View>
+      {/* Left Block: Album Thumbnail Artwork */}
+      <Image source={placeholderIcon} style={styles.artwork} />
 
+      {/* Middle Block: Labels + Figma Progress Bar Stack */}
       <View style={styles.metaContainer}>
         <View style={styles.textRow}>
           <Text
@@ -56,6 +57,7 @@ export default function MiniPlayer() {
           </Text>
         </View>
 
+        {/* Custom Figma Progress Line Tracker Track */}
         <View
           style={[styles.progressTrack, { backgroundColor: colors.border }]}
         >
@@ -64,26 +66,27 @@ export default function MiniPlayer() {
               styles.progressFill,
               {
                 backgroundColor: colors.primary,
-                width: `${progressPercent}%`, // Grows dynamically across the text base width!
+                width: `${progressPercent}%`,
               },
             ]}
           />
         </View>
       </View>
 
+      {/* Right Block: Interactive Symbol Button Trigger */}
+      {/* Note: We wrap the button icon in a nested TouchableOpacity so tapping the play icon doesn't accidentally trigger the page routing step */}
       <TouchableOpacity
         onPress={handlePlaybackToggle}
-        style={[styles.playButton, { backgroundColor: colors.primary }]}
-        activeOpacity={0.8}
+        style={styles.playButton}
+        activeOpacity={0.7}
       >
         <Ionicons
-          name={isPlaying ? "pause" : "play"}
-          size={20}
-          color="#FFFFFF"
-          style={!isPlaying ? { marginLeft: 2 } : null} // Centers the play icon triangle nicely
+          name={isPlaying ? "pause-outline" : "play-outline"}
+          size={24}
+          color={colors.text}
         />
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -96,7 +99,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
+    paddingVertical: 11,
     paddingHorizontal: 16,
     borderTopWidth: 1,
     borderRadius: 10,
@@ -107,8 +110,8 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   artwork: {
-    width: 50,
-    height: 50,
+    width: 52,
+    height: 52,
     borderRadius: 5,
     marginRight: 12,
   },
