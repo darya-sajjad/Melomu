@@ -21,6 +21,7 @@ function AppContent() {
     async function setupApp() {
       try {
         await initializeDatabase();
+
         await seedMockSongs();
       } catch (error) {
         console.error("Error starting database:", error);

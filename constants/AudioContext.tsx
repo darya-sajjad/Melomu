@@ -16,9 +16,11 @@ interface AudioContextType {
   isPlaying: boolean;
   position: number;
   duration: number;
+  currentLyrics: string; // <-- New variable broadcast string
   playSong: (song: Song) => Promise<void>;
   pauseSong: () => Promise<void>;
   resumeSong: () => Promise<void>;
+  reloadLyrics: () => Promise<void>; // <-- Force re-fetch function trigger
 }
 
 const AudioContext = createContext<AudioContextType>({} as AudioContextType);
@@ -31,6 +33,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(1);
+  const [currentLyrics, setCurrentLyrics] = useState(""); // Holds plain text blocks
 
   useEffect(() => {
     Audio.setAudioModeAsync({
@@ -46,6 +49,27 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, [soundInstance]);
 
+  const loadOfflineCachedLyrics = async (songId: string) => {
+    try {
+      const db = (await import("./Database")).dbAsync;
+      const cached: any = await (
+        await db
+      ).getFirstAsync(
+        "SELECT lyrics_text FROM lyrics_cache WHERE song_id = ?",
+        [songId],
+      );
+      if (cached && cached.lyrics_text) {
+        setCurrentLyrics(cached.lyrics_text);
+      } else {
+        setCurrentLyrics(
+          "No lyrics loaded yet. Long-press this song in your Library tab to edit its details and trigger a search lookup!",
+        );
+      }
+    } catch {
+      setCurrentLyrics("");
+    }
+  };
+
   const playSong = async (song: Song) => {
     try {
       if (soundInstance) {
@@ -55,22 +79,8 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsPlaying(false);
       setCurrentSong(song);
 
-      try {
-        const db = (await import("./Database")).dbAsync;
-        const currentTimestamp = Date.now();
-
-        await (
-          await db
-        ).runAsync(
-          `UPDATE songs SET play_count = play_count + 1, last_played = ? WHERE id = ?`,
-          [currentTimestamp, song.id],
-        );
-        console.log(`📈 Logged history update for track: ${song.title}`);
-      } catch (dbError) {
-        console.error("Failed to log track history criteria:", dbError);
-      }
-
-      console.log("🎵 Audio player loading real track path:", song.file_path);
+      // Pull lyrics out of your phone's database storage right when track initializes
+      await loadOfflineCachedLyrics(song.id);
 
       const { sound } = await Audio.Sound.createAsync(
         { uri: song.file_path },
@@ -111,6 +121,10 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const reloadLyrics = async () => {
+    if (currentSong) await loadOfflineCachedLyrics(currentSong.id);
+  };
+
   return (
     <AudioContext.Provider
       value={{
@@ -118,9 +132,11 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         isPlaying,
         position,
         duration,
+        currentLyrics,
         playSong,
         pauseSong,
         resumeSong,
+        reloadLyrics,
       }}
     >
       {children}

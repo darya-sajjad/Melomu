@@ -1,3 +1,4 @@
+import EditMetaModal from "@/components/EditMetaModal";
 import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
@@ -28,6 +29,8 @@ export default function LibraryScreen() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const isFocused = useIsFocused();
+  const [editingSong, setEditingSong] = useState<Song | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const fetchSongsFromDatabase = async () => {
     try {
@@ -72,13 +75,18 @@ export default function LibraryScreen() {
         contentContainerStyle={styles.listPadding}
         ListEmptyComponent={
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No tracks found in your local collection.
+            No tracks found in your local collection. Go to Settings to import
+            songs!
           </Text>
         }
         renderItem={({ item }) => (
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => playSong(item)}
+            onLongPress={() => {
+              setEditingSong(item);
+              setIsModalVisible(true);
+            }}
             style={[
               styles.songCard,
               { backgroundColor: colors.surface, borderColor: colors.border },
@@ -106,6 +114,14 @@ export default function LibraryScreen() {
             </Text>
           </TouchableOpacity>
         )}
+      />
+
+      {/* The Metadata Editor Modal sits cleanly at the root level outside the FlatList */}
+      <EditMetaModal
+        isVisible={isModalVisible}
+        song={editingSong}
+        onClose={() => setIsModalVisible(false)}
+        onSaveSuccess={fetchSongsFromDatabase}
       />
     </View>
   );
