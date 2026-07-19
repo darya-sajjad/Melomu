@@ -3,7 +3,8 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import "react-native-reanimated";
 
-// Import our custom theme tools
+import { AudioProvider } from "@/constants/AudioContext";
+import { initializeDatabase, seedMockSongs } from "@/constants/Database";
 import { ThemeProvider, useTheme } from "@/constants/ThemeContext";
 
 export const unstable_settings = {
@@ -15,13 +16,19 @@ function AppContent() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Wait a brief instant to guarantee context variables exist in memory
-    if (context && context.colors) {
-      setIsReady(true);
+    async function setupApp() {
+      try {
+        await initializeDatabase();
+        await seedMockSongs();
+      } catch (error) {
+        console.error("Error starting database:", error);
+      } finally {
+        setIsReady(true);
+      }
     }
-  }, [context]);
+    setupApp();
+  }, []);
 
-  // If the data is loading, show a clean fallback screen to prevent crashes
   if (!isReady || !context || !context.colors) {
     return null;
   }
@@ -40,11 +47,13 @@ function AppContent() {
   );
 }
 
-// Keep ThemeProvider at the absolute outer layer
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <AudioProvider>
+        {}
+        <AppContent />
+      </AudioProvider>
     </ThemeProvider>
   );
 }
