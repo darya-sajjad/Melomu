@@ -16,11 +16,14 @@ export async function initializeDatabase() {
       album TEXT,
       genre TEXT,
       duration INTEGER DEFAULT 0,
-      custom_artwork_path TEXT
+      custom_artwork_path TEXT,
+      play_count INTEGER DEFAULT 0,    -- Tracks how many times a song is loaded
+      last_played INTEGER DEFAULT 0,   -- Saves timestamp of the latest play
+      is_favorite INTEGER DEFAULT 0    -- Binary flag for user favorites (0 = False, 1 = True)
     );
   `);
 
-  console.log("✅ Melomu Database & Songs table initialized successfully!");
+  console.log("✅ Melomu Database & Smart Tracking initialized successfully!");
 }
 
 export async function seedMockSongs() {
