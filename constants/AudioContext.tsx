@@ -55,11 +55,12 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsPlaying(false);
       setCurrentSong(song);
 
-      const localAudioFile = require("@/assets/sample.mp3");
+      console.log("🎵 Audio player loading real track path:", song.file_path);
 
-      const { sound } = await Audio.Sound.createAsync(localAudioFile, {
-        shouldPlay: true,
-      });
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: song.file_path }, // <-- Direct native URI file path pointer!
+        { shouldPlay: true },
+      );
 
       setSoundInstance(sound);
       setIsPlaying(true);
@@ -80,7 +81,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error("Playback Error:", error);
     }
   };
-
   const pauseSong = async () => {
     if (soundInstance && isPlaying) {
       await soundInstance.pauseAsync();

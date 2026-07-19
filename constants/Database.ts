@@ -34,44 +34,5 @@ export async function seedMockSongs() {
     return;
   }
 
-  await db.runAsync(
-    `INSERT INTO songs (id, file_path, title, artist, album, genre, duration) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      "1",
-      "mock_path_1.mp3",
-      "Midnight Vibes",
-      "The Melomu Crew",
-      "Chill Lo-Fi Vol. 1",
-      "Lo-Fi",
-      180,
-    ],
-  );
-
-  await db.runAsync(
-    `INSERT INTO songs (id, file_path, title, artist, album, genre, duration) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      "2",
-      "mock_path_2.mp3",
-      "Neon Horizon",
-      "SynthWave Boy",
-      "Retro Electro",
-      "Electronic",
-      245,
-    ],
-  );
-
-  await db.runAsync(
-    `INSERT INTO songs (id, file_path, title, artist, album, genre, duration) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      "3",
-      "mock_path_3.mp3",
-      "Acoustic Sunrise",
-      "Emma Fields",
-      "Unplugged Sessions",
-      "Acoustic",
-      155,
-    ],
-  );
-
   console.log("🎉 3 Mock songs successfully seeded into the library database!");
 }

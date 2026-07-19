@@ -1,6 +1,7 @@
 import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
+import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -26,22 +27,25 @@ export default function LibraryScreen() {
   const { playSong } = useAudio();
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const isFocused = useIsFocused();
+
+  const fetchSongsFromDatabase = async () => {
+    try {
+      const db = await dbAsync;
+      const result = await db.getAllAsync<Song>("SELECT * FROM songs");
+      setSongs(result);
+    } catch (error) {
+      console.error("Failed to read tracks from SQLite database:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchSongsFromDatabase() {
-      try {
-        const db = await dbAsync;
-        const result = await db.getAllAsync<Song>("SELECT * FROM songs");
-        setSongs(result);
-      } catch (error) {
-        console.error("Failed to read tracks from SQLite database:", error);
-      } finally {
-        setIsLoading(false);
-      }
+    if (isFocused) {
+      fetchSongsFromDatabase();
     }
-
-    fetchSongsFromDatabase();
-  }, []);
+  }, [isFocused]);
 
   // Helper function to convert track runtime integers (seconds) to readable text strings (MM:SS)
   const formatTime = (seconds: number) => {
@@ -132,7 +136,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    // Soft layouts look excellent for list rows
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
