@@ -1,3 +1,4 @@
+import placeholderIcon from "@/assets/icon.png";
 import EditMetaModal from "@/components/EditMetaModal";
 import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
@@ -7,6 +8,7 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -21,6 +23,7 @@ interface Song {
   genre: string;
   duration: number;
   file_path: string;
+  custom_artwork_path?: string | null;
 }
 
 export default function LibraryScreen() {
@@ -82,7 +85,7 @@ export default function LibraryScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => playSong(item)}
+            onPress={() => playSong(item, songs)}
             onLongPress={() => {
               setEditingSong(item);
               setIsModalVisible(true);
@@ -92,6 +95,15 @@ export default function LibraryScreen() {
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
           >
+            <Image
+              source={
+                item.custom_artwork_path
+                  ? { uri: item.custom_artwork_path }
+                  : placeholderIcon
+              }
+              style={styles.artworkThumbnail}
+            />
+
             <View style={styles.metaContainer}>
               <Text
                 style={[styles.songTitle, { color: colors.text }]}
@@ -173,5 +185,11 @@ const styles = StyleSheet.create({
   durationText: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  artworkThumbnail: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 14,
   },
 });

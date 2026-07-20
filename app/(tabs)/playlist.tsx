@@ -148,7 +148,7 @@ export default function PlaylistDetailScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => playSong(item)}
+            onPress={() => playSong(item, songs)}
             style={styles.songRowItem}
           >
             {/* Square Track Thumbnail Artwork Box */}

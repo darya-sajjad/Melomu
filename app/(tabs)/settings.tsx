@@ -2,8 +2,10 @@ import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
+import { Buffer } from "buffer";
 import * as DocumentPicker from "expo-document-picker"; // <-- Clean, proper package name
 import * as FileSystem from "expo-file-system/legacy";
+import { parseBuffer } from "music-metadata";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -23,10 +25,6 @@ export default function SettingsScreen() {
   const [dbSongCount, setDbSongCount] = useState(0);
   const [storageSizeMB, setStorageSizeMB] = useState("0.0");
 
-  /**
-   * Calculates total file weight and database entries to show live inside
-   * our hidden developer panel.
-   */
   const calculateDiagnosticMetrics = async () => {
     try {
       const db = await dbAsync;
@@ -115,6 +113,34 @@ export default function SettingsScreen() {
     );
   };
 
+  const extractEmbeddedArtwork = async (
+    uri: string,
+    songId: string,
+  ): Promise<string | null> => {
+    try {
+      const base64File = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const fileBuffer = Buffer.from(base64File, "base64");
+
+      const metadata = await parseBuffer(fileBuffer);
+      const picture = metadata.common.picture?.[0];
+      if (!picture) return null; // No cover art embedded
+
+      const base64Data = Buffer.from(picture.data).toString("base64");
+      const artPath = `${FileSystem.documentDirectory}${songId}_cover.jpg`;
+
+      await FileSystem.writeAsStringAsync(artPath, base64Data, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      return artPath;
+    } catch (err) {
+      console.log("ℹ️ No embedded artwork or failed to parse:", err);
+      return null;
+    }
+  };
+
   const handleImportMusicTrack = async () => {
     try {
       const selectedFile = await DocumentPicker.getDocumentAsync({
@@ -153,9 +179,14 @@ export default function SettingsScreen() {
       const uniqueSongId = `user_track_${Date.now()}`;
       const fallbackDuration = 185;
 
+      const extractedArtPath = await extractEmbeddedArtwork(
+        permanentFilePath,
+        uniqueSongId,
+      );
+
       const db = await dbAsync;
       await db.runAsync(
-        `INSERT INTO songs (id, file_path, title, artist, album, genre, duration) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO songs (id, file_path, title, artist, album, genre, duration, custom_artwork_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           uniqueSongId,
           permanentFilePath,
@@ -164,6 +195,7 @@ export default function SettingsScreen() {
           "My Files",
           "Local",
           fallbackDuration,
+          extractedArtPath, // Save local picture path row link
         ],
       );
 
