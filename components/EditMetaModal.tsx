@@ -1,16 +1,21 @@
+import placeholderIcon from "@/assets/icon.png";
 import { dbAsync } from "@/constants/Database";
 import { fetchAndCacheLyrics } from "@/constants/LyricsService"; // Ensure this is imported cleanly
 import { useTheme } from "@/constants/ThemeContext";
+import * as FileSystem from "expo-file-system/legacy";
+import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 interface Song {
@@ -35,13 +40,63 @@ export default function EditMetaModal({
   const { colors } = useTheme();
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
+  const [artworkPath, setArtworkPath] = useState<string | null>(null);
 
   useEffect(() => {
     if (song) {
       setTitle(song.title);
       setArtist(song.artist || "");
+      setArtworkPath((song as any).custom_artwork_path || null);
     }
   }, [song]);
+
+  // ==========================================
+  // ✨ PLACE THE handlePickCoverImage FUNCTION HERE (Step 2) ✨
+  // ==========================================
+  const handlePickCoverImage = async () => {
+    try {
+      // 1. Request user permission to access their photo library
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Permission Denied",
+          "Melomu needs access to your gallery to change album art.",
+        );
+        return;
+      }
+
+      // 2. Open up the smartphone photo selection window dashboard
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true, // Let them crop/square it cleanly!
+        aspect: [1, 1], // ✨ FIXED: Added [1, 1] for a perfect square crop
+        quality: 0.7,
+      });
+
+      if (
+        result.canceled ||
+        !song ||
+        !result.assets ||
+        result.assets.length === 0
+      )
+        return;
+
+      const appStorageDirectory = FileSystem.documentDirectory;
+      if (!appStorageDirectory) return;
+
+      const destPath = `${appStorageDirectory}${song.id}_custom_cover.jpg`;
+
+      await FileSystem.copyAsync({
+        from: result.assets[0].uri,
+        to: destPath,
+      });
+
+      setArtworkPath(destPath); // Update local layout preview state instantly!
+    } catch (error) {
+      console.error("❌ Failed to select custom album art photo:", error);
+    }
+  };
 
   const handleSaveMetadata = async () => {
     if (!song || !title.trim()) return;
@@ -52,17 +107,20 @@ export default function EditMetaModal({
     try {
       const db = await dbAsync;
 
-      // 1. Update our SQLite virtual data fields instantly
-      await db.runAsync("UPDATE songs SET title = ?, artist = ? WHERE id = ?", [
-        targetTitle,
-        targetArtist,
-        song.id,
-      ]);
+      // ✨ UPDATED SQL QUERY (Step 3): Added "custom_artwork_path = ?" to update your database row
+      await db.runAsync(
+        "UPDATE songs SET title = ?, artist = ?, custom_artwork_path = ? WHERE id = ?",
+        [
+          targetTitle,
+          targetArtist,
+          artworkPath, // Pushes your new custom path string to SQLite
+          song.id,
+        ],
+      );
 
       console.log(`✏️ Saved virtual metadata for: ${targetTitle}`);
 
-      // 2. FORCE TRIGGER THE SCRAEPER LOOP OUT LOUD
-      // Running it inside an async IIFE guarantees the background network request doesn't get ignored
+      // 2. FORCE TRIGGER THE SCRAPER LOOP OUT LOUD
       (async () => {
         try {
           await fetchAndCacheLyrics(song.id, targetTitle, targetArtist);
@@ -93,6 +151,37 @@ export default function EditMetaModal({
           <Text style={[styles.modalTitle, { color: colors.text }]}>
             Edit Song Info
           </Text>
+
+          <TouchableOpacity
+            onPress={handlePickCoverImage}
+            style={{
+              alignSelf: "center",
+              marginBottom: 20,
+              alignItems: "center",
+            }}
+            activeOpacity={0.7}
+          >
+            <Image
+              source={artworkPath ? { uri: artworkPath } : placeholderIcon}
+              style={{
+                width: 100,
+                height: 100,
+                borderRadius: 14,
+                backgroundColor: colors.background,
+              }}
+            />
+            <Text
+              style={{
+                color: colors.primary,
+                textAlign: "center",
+                marginTop: 8,
+                fontSize: 13,
+                fontWeight: "600",
+              }}
+            >
+              Change Cover Photo
+            </Text>
+          </TouchableOpacity>
 
           <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
             Track Title

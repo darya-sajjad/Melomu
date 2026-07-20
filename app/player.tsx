@@ -2,6 +2,7 @@ import placeholderIcon from "@/assets/icon.png";
 import { useAudio } from "@/constants/AudioContext";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
+import Slider from "@react-native-community/slider";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -37,8 +38,12 @@ export default function FullPlayerScreen() {
     toggleShuffle,
     cycleRepeatMode,
     reloadLyrics,
+    seekTo,
   } = useAudio();
 
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [seekValue, setSeekValue] = useState(0);
+  const displayedPosition = isSeeking ? seekValue : position;
   const [isLyricsVisible, setIsLyricsVisible] = useState(false);
 
   useEffect(() => {
@@ -62,11 +67,6 @@ export default function FullPlayerScreen() {
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
-  const progressPercent = Math.min(
-    Math.max((position / duration) * 100, 0),
-    100,
-  );
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* 1. Top Header Navigation Panel */}
@@ -85,16 +85,18 @@ export default function FullPlayerScreen() {
           <Ionicons name="ellipsis-vertical" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
-
       {/* 2. Album Artwork Canvas */}
       <View style={styles.artworkContainer}>
         <Image
-          source={placeholderIcon}
+          source={
+            currentSong.custom_artwork_path
+              ? { uri: currentSong.custom_artwork_path }
+              : placeholderIcon
+          }
           style={[styles.albumArt, { backgroundColor: colors.surface }]}
           resizeMode="cover"
         />
       </View>
-
       {/* 3. Song Info Labels Row */}
       <View style={styles.metaBlock}>
         <Text
@@ -110,29 +112,31 @@ export default function FullPlayerScreen() {
           {currentSong.artist || "Unknown Artist"}
         </Text>
       </View>
-
-      {/* 4. Progress Slider Deck */}
       <View style={styles.progressDeck}>
-        <View
-          style={[styles.progressTrack, { backgroundColor: colors.border }]}
-        >
-          <View
-            style={[
-              styles.progressFill,
-              { backgroundColor: colors.primary, width: `${progressPercent}%` },
-            ]}
-          />
-        </View>
+        <Slider
+          style={{ width: "100%", height: 32 }}
+          minimumValue={0}
+          maximumValue={duration || 1}
+          value={displayedPosition} // ✨ Smooth tracking assignment
+          minimumTrackTintColor={colors.primary}
+          maximumTrackTintColor={colors.border}
+          thumbTintColor={colors.primary}
+          onSlidingStart={() => setIsSeeking(true)} // Toggles tracking ON
+          onValueChange={(val) => setSeekValue(val)} // Keeps labels tracking smoothly
+          onSlidingComplete={async (val) => {
+            await seekTo(val); // Skips file to new timestamp
+            setIsSeeking(false); // Toggles tracking OFF safely
+          }}
+        />
         <View style={timeLabelsRowStyles.row}>
           <Text style={[styles.timeText, { color: colors.textSecondary }]}>
-            {formatTime(position)}
+            {formatTime(displayedPosition)}
           </Text>
           <Text style={[styles.timeText, { color: colors.textSecondary }]}>
             {formatTime(duration)}
           </Text>
         </View>
       </View>
-
       {/* 5. Media Controls Deck */}
       <View style={styles.controlsRow}>
         <TouchableOpacity activeOpacity={0.7} onPress={toggleShuffle}>
@@ -160,15 +164,34 @@ export default function FullPlayerScreen() {
         <TouchableOpacity activeOpacity={0.7} onPress={playNext}>
           <Ionicons name="play-skip-forward" size={26} color={colors.text} />
         </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.7} onPress={cycleRepeatMode}>
-          <Ionicons
-            name={repeatMode === "one" ? "repeat" : "repeat-outline"}
-            size={24}
-            color={repeatMode !== "off" ? colors.active : colors.primary}
-          />
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={cycleRepeatMode}
+          style={styles.repeatButtonContainer}
+        >
+          <View style={styles.iconWrapper}>
+            <Ionicons
+              name={repeatMode === "one" ? "repeat" : "repeat-outline"}
+              size={24}
+              color={repeatMode !== "off" ? colors.active : colors.primary}
+            />
+
+            {/* ✨ Tiny "1" overlay badge rendered only when single song repeat is active */}
+            {repeatMode === "one" && (
+              <View
+                style={[
+                  styles.tinyBadgeCircle,
+                  { backgroundColor: colors.primary },
+                ]}
+              >
+                <Text style={[styles.tinyBadgeText, { color: colors.active }]}>
+                  1
+                </Text>
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
       </View>
-
       {/* 6. Footer Lyrics Row Button */}
       <TouchableOpacity
         style={styles.footerRow}
@@ -178,7 +201,6 @@ export default function FullPlayerScreen() {
         <Text style={[styles.footerText, { color: colors.text }]}>Lyrics</Text>
         <Ionicons name="menu" size={24} color={colors.text} />
       </TouchableOpacity>
-
       <Modal
         visible={isLyricsVisible}
         animationType="slide"
@@ -396,5 +418,34 @@ const styles = StyleSheet.create({
     lineHeight: 38,
     textAlign: "left",
     letterSpacing: -0.2,
+  },
+  repeatButtonContainer: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconWrapper: {
+    position: "relative", // ✨ Required: Anchor context for absolute positioning
+    width: 26,
+    height: 26,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tinyBadgeCircle: {
+    position: "absolute",
+    bottom: -2, // Adjusts badge vertical float depth over the icon base
+    right: -4, // Pulls badge slightly outside to the right for clear reading
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tinyBadgeText: {
+    fontSize: 9,
+    fontWeight: "800",
+    lineHeight: 10, // Centers the numeric text string cleanly inside its circle framework
+    textAlign: "center",
   },
 });

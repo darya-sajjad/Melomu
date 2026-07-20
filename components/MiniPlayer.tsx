@@ -37,7 +37,14 @@ export default function MiniPlayer() {
       ]}
     >
       {/* Left Block: Album Thumbnail Artwork */}
-      <Image source={placeholderIcon} style={styles.artwork} />
+      <Image
+        source={
+          currentSong.custom_artwork_path
+            ? { uri: currentSong.custom_artwork_path }
+            : placeholderIcon
+        }
+        style={styles.artwork}
+      />
 
       {/* Middle Block: Labels + Figma Progress Bar Stack */}
       <View style={styles.metaContainer}>
