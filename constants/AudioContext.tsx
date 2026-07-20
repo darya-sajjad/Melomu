@@ -16,9 +16,10 @@ interface Song {
   genre: string;
   duration: number;
   file_path: string;
+  custom_artwork_path?: string | null;
 }
 
-type RepeatMode = "off" | "all" | "one";
+type RepeatMode = "off" | "one" | "all";
 
 interface AudioContextType {
   currentSong: Song | null;
@@ -36,6 +37,7 @@ interface AudioContextType {
   toggleShuffle: () => void;
   cycleRepeatMode: () => void;
   reloadLyrics: () => Promise<void>;
+  seekTo: (millis: number) => Promise<void>;
 }
 
 const AudioContext = createContext<AudioContextType>({} as AudioContextType);
@@ -51,12 +53,9 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const [shuffle, setShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>("off");
 
-  // Playback state lives in refs too, so the sound's status callback always
-  // reads the latest queue/index/mode without needing to be re-subscribed
-  // every time something changes.
   const soundRef = useRef<Audio.Sound | null>(null);
-  const originalQueueRef = useRef<Song[]>([]); // list as it was tapped from (unshuffled)
-  const queueRef = useRef<Song[]>([]); // actual playback order
+  const originalQueueRef = useRef<Song[]>([]);
+  const queueRef = useRef<Song[]>([]);
   const indexRef = useRef<number>(-1);
   const shuffleRef = useRef(shuffle);
   const repeatModeRef = useRef(repeatMode);
@@ -92,8 +91,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     return copy;
   };
 
-  // Builds a shuffled order but keeps `keep` pinned first, so shuffling
-  // doesn't interrupt the track that's currently playing.
   const buildShuffledQueue = (list: Song[], keep?: Song) => {
     if (!keep) return shuffleArray(list);
     const rest = list.filter((s) => s.id !== keep.id);
@@ -119,9 +116,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Loads and plays whatever sits at queueRef.current[index]. This is the
-  // single place that actually starts playback — playSong/playNext/
-  // playPrevious/repeat-one all funnel through here.
   const loadAndPlayIndex = async (index: number) => {
     const list = queueRef.current;
     if (!list.length || index < 0 || index >= list.length) return;
@@ -174,9 +168,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Moves the index by `step`. `wrap` controls what happens at the edges:
-  // used for both manual skip (always wraps) and auto-advance-on-finish
-  // (only wraps when repeat is "all").
   const advance = (step: number, wrap: boolean) => {
     const list = queueRef.current;
     if (!list.length) return;
@@ -207,17 +198,52 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     await loadAndPlayIndex(startIndex === -1 ? 0 : startIndex);
   };
 
-  const pauseSong = async () => {
-    if (soundRef.current && isPlaying) {
-      await soundRef.current.pauseAsync();
-      setIsPlaying(false);
+  const seekTo = async (millis: number) => {
+    try {
+      if (soundRef.current) {
+        const status = await soundRef.current.getStatusAsync();
+        if (status.isLoaded) {
+          await soundRef.current.setStatusAsync({
+            positionMillis: millis,
+            seekMillisToleranceBefore: 500,
+            seekMillisToleranceAfter: 500,
+          });
+
+          setPosition(millis);
+        }
+      }
+    } catch (error) {
+      console.error("❌ Failed to seek position:", error);
     }
   };
 
+  // ✨ FIX 2: Cleaned and Type-Safe Pause Handler (Duplicates removed)
+  const pauseSong = async () => {
+    try {
+      if (soundRef.current) {
+        const status = await soundRef.current.getStatusAsync();
+        if (status.isLoaded && status.isPlaying) {
+          await soundRef.current.pauseAsync();
+          setIsPlaying(false);
+        }
+      }
+    } catch (error) {
+      console.error("❌ Failed to pause audio:", error);
+    }
+  };
+
+  // ✨ FIX 3: Cleaned and Type-Safe Resume Handler
   const resumeSong = async () => {
-    if (soundRef.current && !isPlaying) {
-      await soundRef.current.playAsync();
-      setIsPlaying(true);
+    try {
+      if (soundRef.current) {
+        const status = await soundRef.current.getStatusAsync();
+        if (status.isLoaded && !status.isPlaying) {
+          await soundRef.current.playAsync();
+          setIsPlaying(true);
+        }
+      }
+    } catch (error) {
+      console.error("❌ Failed to resume audio:", error);
     }
   };
 
@@ -226,8 +252,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const playPrevious = async () => {
-    // Match the common player convention: if you're more than 3s into a
-    // track, "previous" restarts it instead of jumping back a song.
     if (position > 3000) {
       await loadAndPlayIndex(indexRef.current);
       return;
@@ -282,6 +306,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         toggleShuffle,
         cycleRepeatMode,
         reloadLyrics,
+        seekTo,
       }}
     >
       {children}

@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import * as DocumentPicker from "expo-document-picker"; // <-- Clean, proper package name
 import * as FileSystem from "expo-file-system/legacy";
+import jsmediatags from "jsmediatags";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -23,10 +24,6 @@ export default function SettingsScreen() {
   const [dbSongCount, setDbSongCount] = useState(0);
   const [storageSizeMB, setStorageSizeMB] = useState("0.0");
 
-  /**
-   * Calculates total file weight and database entries to show live inside
-   * our hidden developer panel.
-   */
   const calculateDiagnosticMetrics = async () => {
     try {
       const db = await dbAsync;
@@ -115,6 +112,49 @@ export default function SettingsScreen() {
     );
   };
 
+  const extractEmbeddedArtwork = (
+    uri: string,
+    songId: string,
+  ): Promise<string | null> => {
+    return new Promise((resolve) => {
+      jsmediatags.read(uri, {
+        onSuccess: async (tag: any) => {
+          const picture = tag.tags.picture;
+          if (!picture) return resolve(null); // No cover art embedded
+
+          try {
+            let binary = "";
+            for (let i = 0; i < picture.data.length; i++) {
+              binary += String.fromCharCode(picture.data[i]);
+            }
+
+            const base64Data = global.btoa
+              ? global.btoa(binary)
+              : Buffer.from(picture.data).toString("base64");
+
+            const artPath = `${FileSystem.documentDirectory}${songId}_cover.jpg`;
+
+            await FileSystem.writeAsStringAsync(artPath, base64Data, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+
+            resolve(artPath); // Returns path string
+          } catch (err) {
+            console.error("⚠️ Failed to parse artwork binaries:", err);
+            resolve(null);
+          }
+        },
+        onError: (error: any) => {
+          console.log(
+            "ℹ️ No embedded pictures found inside this file:",
+            error.type,
+          );
+          resolve(null);
+        },
+      });
+    });
+  };
+
   const handleImportMusicTrack = async () => {
     try {
       const selectedFile = await DocumentPicker.getDocumentAsync({
@@ -153,9 +193,14 @@ export default function SettingsScreen() {
       const uniqueSongId = `user_track_${Date.now()}`;
       const fallbackDuration = 185;
 
+      const extractedArtPath = await extractEmbeddedArtwork(
+        permanentFilePath,
+        uniqueSongId,
+      );
+
       const db = await dbAsync;
       await db.runAsync(
-        `INSERT INTO songs (id, file_path, title, artist, album, genre, duration) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO songs (id, file_path, title, artist, album, genre, duration, custom_artwork_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           uniqueSongId,
           permanentFilePath,
@@ -164,6 +209,7 @@ export default function SettingsScreen() {
           "My Files",
           "Local",
           fallbackDuration,
+          extractedArtPath, // Save local picture path row link
         ],
       );
 
