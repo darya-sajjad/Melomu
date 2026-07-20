@@ -5,15 +5,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-    Dimensions,
-    Image,
-    Modal, // ✨ Fixed: Added missing ScrollView import
-    Platform, // ✨ Fixed: Added missing Modal import
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 // Extract layout dimension values safely
@@ -28,8 +28,14 @@ export default function FullPlayerScreen() {
     position,
     duration,
     currentLyrics,
+    shuffle,
+    repeatMode,
     pauseSong,
     resumeSong,
+    playNext,
+    playPrevious,
+    toggleShuffle,
+    cycleRepeatMode,
     reloadLyrics,
   } = useAudio();
 
@@ -129,14 +135,14 @@ export default function FullPlayerScreen() {
 
       {/* 5. Media Controls Deck */}
       <View style={styles.controlsRow}>
-        <TouchableOpacity activeOpacity={0.7}>
+        <TouchableOpacity activeOpacity={0.7} onPress={toggleShuffle}>
           <Ionicons
-            name="shuffle-outline"
+            name="shuffle"
             size={24}
-            color={colors.textSecondary}
+            color={shuffle ? colors.active : colors.primary}
           />
         </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.7}>
+        <TouchableOpacity activeOpacity={0.7} onPress={playPrevious}>
           <Ionicons name="play-skip-back" size={26} color={colors.text} />
         </TouchableOpacity>
         <TouchableOpacity
@@ -146,19 +152,19 @@ export default function FullPlayerScreen() {
         >
           <Ionicons
             name={isPlaying ? "pause" : "play"}
-            size={28}
+            size={30}
             color="#FFFFFF"
             style={!isPlaying ? { marginLeft: 3 } : null}
           />
         </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.7}>
+        <TouchableOpacity activeOpacity={0.7} onPress={playNext}>
           <Ionicons name="play-skip-forward" size={26} color={colors.text} />
         </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.7}>
+        <TouchableOpacity activeOpacity={0.7} onPress={cycleRepeatMode}>
           <Ionicons
-            name="repeat-outline"
+            name={repeatMode === "one" ? "repeat" : "repeat-outline"}
             size={24}
-            color={colors.textSecondary}
+            color={repeatMode !== "off" ? colors.active : colors.primary}
           />
         </TouchableOpacity>
       </View>
