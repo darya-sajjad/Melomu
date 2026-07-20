@@ -82,7 +82,7 @@ export default function LibraryScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => playSong(item)}
+            onPress={() => playSong(item, songs)}
             onLongPress={() => {
               setEditingSong(item);
               setIsModalVisible(true);

@@ -5,6 +5,7 @@ export const darkColors = {
   text: "#F5F5F5", // Main song titles, headers
   textSecondary: "#BEE9E8", // Artist names, duration timestamps
   border: "#62B6CB", // Subtle divider lines
+  active: "#c762cb",
 };
 
 export const lightColors = {
@@ -14,6 +15,7 @@ export const lightColors = {
   text: "#1E1E1E", // Crisp white titles
   textSecondary: "#1B4965", // Grayish artist text
   border: "#62B6CB", // Dark divider lines
+  active: "#882a8b",
 };
 
 export type Colors = typeof lightColors;
