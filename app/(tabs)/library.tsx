@@ -95,7 +95,6 @@ export default function LibraryScreen() {
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
           >
-            {/* ✨ STEP 1: INJECT THE COVER IMAGE HERE (LEFT OF TEXT) */}
             <Image
               source={
                 item.custom_artwork_path
@@ -191,5 +190,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 8,
+    marginRight: 14,
   },
 });

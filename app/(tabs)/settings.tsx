@@ -2,9 +2,10 @@ import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
+import { Buffer } from "buffer";
 import * as DocumentPicker from "expo-document-picker"; // <-- Clean, proper package name
 import * as FileSystem from "expo-file-system/legacy";
-import jsmediatags from "jsmediatags";
+import { parseBuffer } from "music-metadata";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -112,47 +113,32 @@ export default function SettingsScreen() {
     );
   };
 
-  const extractEmbeddedArtwork = (
+  const extractEmbeddedArtwork = async (
     uri: string,
     songId: string,
   ): Promise<string | null> => {
-    return new Promise((resolve) => {
-      jsmediatags.read(uri, {
-        onSuccess: async (tag: any) => {
-          const picture = tag.tags.picture;
-          if (!picture) return resolve(null); // No cover art embedded
-
-          try {
-            let binary = "";
-            for (let i = 0; i < picture.data.length; i++) {
-              binary += String.fromCharCode(picture.data[i]);
-            }
-
-            const base64Data = global.btoa
-              ? global.btoa(binary)
-              : Buffer.from(picture.data).toString("base64");
-
-            const artPath = `${FileSystem.documentDirectory}${songId}_cover.jpg`;
-
-            await FileSystem.writeAsStringAsync(artPath, base64Data, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-
-            resolve(artPath); // Returns path string
-          } catch (err) {
-            console.error("⚠️ Failed to parse artwork binaries:", err);
-            resolve(null);
-          }
-        },
-        onError: (error: any) => {
-          console.log(
-            "ℹ️ No embedded pictures found inside this file:",
-            error.type,
-          );
-          resolve(null);
-        },
+    try {
+      const base64File = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
       });
-    });
+      const fileBuffer = Buffer.from(base64File, "base64");
+
+      const metadata = await parseBuffer(fileBuffer);
+      const picture = metadata.common.picture?.[0];
+      if (!picture) return null; // No cover art embedded
+
+      const base64Data = Buffer.from(picture.data).toString("base64");
+      const artPath = `${FileSystem.documentDirectory}${songId}_cover.jpg`;
+
+      await FileSystem.writeAsStringAsync(artPath, base64Data, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      return artPath;
+    } catch (err) {
+      console.log("ℹ️ No embedded artwork or failed to parse:", err);
+      return null;
+    }
   };
 
   const handleImportMusicTrack = async () => {
