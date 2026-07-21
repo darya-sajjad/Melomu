@@ -9,13 +9,16 @@ import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Image,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import Swipeable from "react-native-gesture-handler/Swipeable";
 
 interface Song {
   id: string;
@@ -30,7 +33,6 @@ interface Song {
 
 export default function LibraryScreen() {
   const { colors } = useTheme();
-  const { playSong } = useAudio();
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const isFocused = useIsFocused();
@@ -52,6 +54,8 @@ export default function LibraryScreen() {
       setIsLoading(false);
     }
   };
+
+  const { playSong, addToQueue } = useAudio();
 
   useEffect(() => {
     if (isFocused) {
@@ -88,65 +92,127 @@ export default function LibraryScreen() {
             songs!
           </Text>
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => playSong(item, songs)}
-            onLongPress={() => {
-              setEditingSong(item);
-              setIsModalVisible(true);
-            }}
-            style={[
-              styles.songCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <Image
-              source={
-                item.custom_artwork_path
-                  ? { uri: item.custom_artwork_path }
-                  : placeholderIcon
-              }
-              style={styles.artworkThumbnail}
-            />
+        renderItem={({ item }) => {
+          let swipeableRef: Swipeable | null = null;
 
-            <View style={styles.metaContainer}>
-              <Text
-                style={[styles.songTitle, { color: colors.text }]}
-                numberOfLines={1}
-              >
-                {item.title}
-              </Text>
-              <Text
-                style={[styles.songArtist, { color: colors.textSecondary }]}
-                numberOfLines={1}
-              >
-                {item.artist} • {item.album}
-              </Text>
-            </View>
+          const renderRightActions = (
+            progress: Animated.AnimatedInterpolation<number>,
+            dragX: Animated.AnimatedInterpolation<number>,
+          ) => {
+            const opacity = dragX.interpolate({
+              inputRange: [-80, -20, 0],
+              outputRange: [1, 0.5, 0],
+              extrapolate: "clamp",
+            });
 
-            <Text
-              style={[styles.durationText, { color: colors.textSecondary }]}
-            >
-              {formatTime(item.duration)}
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.6}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={{ marginLeft: 10 }}
-              onPress={() => {
-                setAddingToPlaylistSong(item);
-                setIsAddToPlaylistVisible(true);
+            const scale = dragX.interpolate({
+              inputRange: [-80, -20, 0],
+              outputRange: [1, 0.8, 0.5],
+              extrapolate: "clamp",
+            });
+
+            const backgroundColor = dragX.interpolate({
+              inputRange: [-80, -30, 0],
+              outputRange: [colors.primary, "#404040", colors.background],
+              extrapolate: "clamp",
+            });
+
+            return (
+              <Animated.View
+                style={{
+                  backgroundColor,
+                  justifyContent: "center",
+                  alignItems: "flex-end",
+                  paddingRight: 24,
+                  flex: 1,
+                  marginVertical: 4,
+                  borderRadius: 12,
+                }}
+              >
+                <Animated.View style={{ opacity, transform: [{ scale }] }}>
+                  <Ionicons name="list" size={24} color="#FFFFFF" />
+                </Animated.View>
+              </Animated.View>
+            );
+          };
+
+          return (
+            <Swipeable
+              ref={(ref) => {
+                swipeableRef = ref;
+              }}
+              renderRightActions={renderRightActions}
+              overshootRight={false}
+              friction={2}
+              // ✨ Triggers consistently on swipe open without complex thresholds
+              onSwipeableOpen={() => {
+                addToQueue(item);
+                swipeableRef?.close();
               }}
             >
-              <Ionicons
-                name="add-circle-outline"
-                size={22}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        )}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => playSong(item, songs)}
+                onLongPress={() => {
+                  setEditingSong(item);
+                  setIsModalVisible(true);
+                }}
+                style={[
+                  styles.songCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Image
+                  source={
+                    item.custom_artwork_path
+                      ? { uri: item.custom_artwork_path }
+                      : placeholderIcon
+                  }
+                  style={styles.artworkThumbnail}
+                />
+
+                <View style={styles.metaContainer}>
+                  <Text
+                    style={[styles.songTitle, { color: colors.text }]}
+                    numberOfLines={1}
+                  >
+                    {item.title}
+                  </Text>
+                  <Text
+                    style={[styles.songArtist, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                  >
+                    {item.artist} • {item.album}
+                  </Text>
+                </View>
+
+                <Text
+                  style={[styles.durationText, { color: colors.textSecondary }]}
+                >
+                  {formatTime(item.duration)}
+                </Text>
+                <TouchableOpacity
+                  activeOpacity={0.6}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  style={{ marginLeft: 10 }}
+                  onPress={() => {
+                    setAddingToPlaylistSong(item);
+                    setIsAddToPlaylistVisible(true);
+                  }}
+                >
+                  <Ionicons
+                    name="add-circle-outline"
+                    size={22}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </TouchableOpacity>
+            </Swipeable>
+          );
+        }}
       />
 
       {/* The Metadata Editor Modal sits cleanly at the root level outside the FlatList */}
@@ -168,6 +234,7 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: Platform.OS === "ios" ? 50 : 30,
   },
   loadingCenter: {
     flex: 1,

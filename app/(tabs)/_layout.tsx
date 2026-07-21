@@ -34,6 +34,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
+            headerShown: false,
             title: "Home",
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
@@ -47,6 +48,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="library"
           options={{
+            headerShown: false,
             title: "Library",
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
@@ -60,6 +62,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="settings"
           options={{
+            headerShown: false,
             title: "Settings",
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
