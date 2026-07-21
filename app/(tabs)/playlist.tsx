@@ -1,20 +1,27 @@
-import placeholderIcon from "@/assets/icon.png"; // Clean ES6 import
+import placeholderIcon from "@/assets/icon.png";
+import EditPlaylistModal from "@/components/EditPlaylistModal";
 import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { memo, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   FlatList,
   Image,
+  Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import DraggableFlatList, {
+  RenderItemParams,
+  ScaleDecorator,
+} from "react-native-draggable-flatlist";
 
 const { width } = Dimensions.get("window");
 
@@ -28,50 +35,15 @@ interface Song {
   file_path: string;
 }
 
-interface HeaderProps {
-  title: string;
-  songCount: number;
-  colors: any;
-  onBack: () => void;
+interface PlaylistMeta {
+  id: string;
+  name: string;
+  artwork_path: string | null;
 }
 
-const OptimizedPlaylistHeader = memo(
-  ({ title, songCount, colors, onBack }: HeaderProps) => {
-    return (
-      <View style={styles.headerContainer}>
-        {/* 1. Navigation Icon Header Row */}
-        <View style={styles.navRow}>
-          <TouchableOpacity onPress={onBack} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={26} color={colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity activeOpacity={0.7}>
-            <Ionicons name="ellipsis-vertical" size={24} color={colors.text} />
-          </TouchableOpacity>
-        </View>
+type ScreenMode = "normal" | "reorder" | "select";
 
-        {/* 2. Massive Centered CD Artwork Image Frame Block */}
-        <View style={styles.artworkWrapper}>
-          <Image
-            source={placeholderIcon}
-            style={[styles.mainCdArt, { backgroundColor: colors.surface }]}
-            resizeMode="cover"
-          />
-        </View>
-
-        {/* 3. Playlist Big Text Labels Metadata Block */}
-        <Text style={[styles.playlistMainTitle, { color: colors.text }]}>
-          {title || "Playlist"}
-        </Text>
-        <Text
-          style={[styles.playlistDescription, { color: colors.textSecondary }]}
-        >
-          {songCount} {songCount === 1 ? "Song" : "Songs"} • Melomu Smart List
-        </Text>
-      </View>
-    );
-  },
-);
-OptimizedPlaylistHeader.displayName = "OptimizedPlaylistHeader";
+const SMART_PLAYLIST_IDS = ["recent", "most", "least", "favorites"];
 
 export default function PlaylistDetailScreen() {
   const router = useRouter();
@@ -79,40 +51,159 @@ export default function PlaylistDetailScreen() {
   const { playSong } = useAudio();
 
   const { id, title } = useLocalSearchParams<{ id: string; title: string }>();
+  const isCustomPlaylist = !SMART_PLAYLIST_IDS.includes(id || "");
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [playlistMeta, setPlaylistMeta] = useState<PlaylistMeta | null>(null);
+
+  const [mode, setMode] = useState<ScreenMode>("normal");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+
+  const loadSongs = useCallback(async () => {
+    try {
+      const db = await dbAsync;
+      let queryStr = "SELECT * FROM songs";
+      let queryParams: any[] = [];
+
+      if (id === "recent") {
+        queryStr =
+          "SELECT * FROM songs WHERE last_played > 0 ORDER BY last_played DESC";
+      } else if (id === "most") {
+        queryStr =
+          "SELECT * FROM songs WHERE play_count >= 3 ORDER BY play_count DESC";
+      } else if (id === "least") {
+        queryStr =
+          "SELECT * FROM songs WHERE play_count < 3 ORDER BY play_count ASC";
+      } else if (id === "favorites") {
+        queryStr = "SELECT * FROM songs WHERE is_favorite = 1";
+      } else if (id) {
+        queryStr = `
+          SELECT s.* FROM songs s
+          INNER JOIN playlist_songs ps ON ps.song_id = s.id
+          WHERE ps.playlist_id = ?
+          ORDER BY ps.position ASC
+        `;
+        queryParams = [id];
+      }
+
+      const results = await db.getAllAsync<Song>(queryStr, queryParams);
+      setSongs(results);
+    } catch (error) {
+      console.error("Failed to fetch categorized songs:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
+
+  const loadPlaylistMeta = useCallback(async () => {
+    if (!isCustomPlaylist || !id) return;
+    try {
+      const db = await dbAsync;
+      const row = await db.getFirstAsync<PlaylistMeta>(
+        "SELECT id, name, artwork_path FROM playlists WHERE id = ?",
+        [id],
+      );
+      if (row) setPlaylistMeta(row);
+    } catch (error) {
+      console.error("Failed to load playlist meta:", error);
+    }
+  }, [id, isCustomPlaylist]);
 
   useEffect(() => {
-    async function queryFilteredPlaylistTracks() {
-      try {
-        const db = await dbAsync;
-        let queryStr = "SELECT * FROM songs";
+    loadSongs();
+    loadPlaylistMeta();
+  }, [loadSongs, loadPlaylistMeta]);
 
-        if (id === "recent") {
-          queryStr =
-            "SELECT * FROM songs WHERE last_played > 0 ORDER BY last_played DESC";
-        } else if (id === "most") {
-          queryStr =
-            "SELECT * FROM songs WHERE play_count >= 3 ORDER BY play_count DESC";
-        } else if (id === "least") {
-          queryStr =
-            "SELECT * FROM songs WHERE play_count < 3 ORDER BY play_count ASC";
-        } else if (id === "favorites") {
-          queryStr = "SELECT * FROM songs WHERE is_favorite = 1";
-        }
+  const exitMode = () => {
+    setMode("normal");
+    setSelectedIds(new Set());
+  };
 
-        const results = await db.getAllAsync<Song>(queryStr);
-        setSongs(results);
-      } catch (error) {
-        console.error("Failed to fetch categorized songs:", error);
-      } finally {
-        setIsLoading(false);
+  const toggleSelected = (songId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(songId)) next.delete(songId);
+      else next.add(songId);
+      return next;
+    });
+  };
+
+  const handleReorder = async (newData: Song[]) => {
+    setSongs(newData);
+    try {
+      const db = await dbAsync;
+      for (let i = 0; i < newData.length; i++) {
+        await db.runAsync(
+          "UPDATE playlist_songs SET position = ? WHERE playlist_id = ? AND song_id = ?",
+          [i, id, newData[i].id],
+        );
       }
+    } catch (error) {
+      console.error("Failed to save reordered positions:", error);
     }
+  };
 
-    queryFilteredPlaylistTracks();
-  }, [id]);
+  const handleRemoveSelected = () => {
+    if (selectedIds.size === 0) return;
+    Alert.alert(
+      "Remove Songs",
+      `Remove ${selectedIds.size} song${selectedIds.size === 1 ? "" : "s"} from this playlist?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const db = await dbAsync;
+              const idsArray = Array.from(selectedIds);
+              for (const songId of idsArray) {
+                await db.runAsync(
+                  "DELETE FROM playlist_songs WHERE playlist_id = ? AND song_id = ?",
+                  [id, songId],
+                );
+              }
+              setSongs((prev) => prev.filter((s) => !selectedIds.has(s.id)));
+              exitMode();
+            } catch (error) {
+              console.error("Failed to remove selected songs:", error);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDeletePlaylist = () => {
+    Alert.alert(
+      "Delete Playlist",
+      `Are you sure you want to delete "${playlistMeta?.name || title}"? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const db = await dbAsync;
+              await db.runAsync("DELETE FROM playlists WHERE id = ?", [id]);
+              router.back();
+            } catch (error) {
+              console.error("Failed to delete playlist:", error);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const displayTitle = playlistMeta?.name || title || "Playlist";
+  const displayArtwork = playlistMeta?.artwork_path
+    ? { uri: playlistMeta.artwork_path }
+    : placeholderIcon;
 
   if (isLoading) {
     return (
@@ -124,89 +215,308 @@ export default function PlaylistDetailScreen() {
     );
   }
 
+  const headerBlock = (
+    <View style={styles.headerContainer}>
+      <View style={styles.navRow}>
+        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={26} color={colors.text} />
+        </TouchableOpacity>
+
+        {mode !== "normal" ? (
+          <TouchableOpacity onPress={exitMode} activeOpacity={0.7}>
+            <Text style={[styles.exitModeText, { color: colors.primary }]}>
+              {mode === "reorder" ? "Done" : "Cancel"}
+            </Text>
+          </TouchableOpacity>
+        ) : isCustomPlaylist ? (
+          <TouchableOpacity
+            onPress={() => setIsMenuOpen(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="ellipsis-vertical" size={24} color={colors.text} />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 24 }} />
+        )}
+      </View>
+
+      <View style={styles.artworkWrapper}>
+        <Image
+          source={displayArtwork}
+          style={[styles.mainCdArt, { backgroundColor: colors.surface }]}
+          resizeMode="cover"
+        />
+      </View>
+
+      <Text style={[styles.playlistMainTitle, { color: colors.text }]}>
+        {displayTitle}
+      </Text>
+      <Text
+        style={[styles.playlistDescription, { color: colors.textSecondary }]}
+      >
+        {mode === "select"
+          ? `${selectedIds.size} selected`
+          : `${songs.length} ${songs.length === 1 ? "Song" : "Songs"}`}
+      </Text>
+    </View>
+  );
+
+  const renderNormalItem = ({ item }: { item: Song }) => (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={() => playSong(item, songs)}
+      style={styles.songRowItem}
+    >
+      <Image
+        source={placeholderIcon}
+        style={[styles.songRowArt, { backgroundColor: colors.surface }]}
+      />
+      <View style={styles.metaTextContainer}>
+        <Text
+          style={[styles.songTitleLabel, { color: colors.text }]}
+          numberOfLines={1}
+        >
+          {item.title}
+        </Text>
+        <Text
+          style={[styles.songArtistLabel, { color: colors.textSecondary }]}
+          numberOfLines={1}
+        >
+          {item.artist || "Local Audio"}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderSelectableItem = ({ item }: { item: Song }) => {
+    const isSelected = selectedIds.has(item.id);
+    return (
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => toggleSelected(item.id)}
+        style={styles.songRowItem}
+      >
+        <Ionicons
+          name={isSelected ? "checkbox" : "square-outline"}
+          size={22}
+          color={isSelected ? colors.primary : colors.textSecondary}
+          style={styles.selectIcon}
+        />
+        <Image
+          source={placeholderIcon}
+          style={[styles.songRowArt, { backgroundColor: colors.surface }]}
+        />
+        <View style={styles.metaTextContainer}>
+          <Text
+            style={[styles.songTitleLabel, { color: colors.text }]}
+            numberOfLines={1}
+          >
+            {item.title}
+          </Text>
+          <Text
+            style={[styles.songArtistLabel, { color: colors.textSecondary }]}
+            numberOfLines={1}
+          >
+            {item.artist || "Local Audio"}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderDraggableItem = ({
+    item,
+    drag,
+    isActive,
+  }: RenderItemParams<Song>) => (
+    <ScaleDecorator>
+      <TouchableOpacity
+        activeOpacity={1}
+        onLongPress={drag}
+        disabled={isActive}
+        style={[styles.songRowItem, { opacity: isActive ? 0.7 : 1 }]}
+      >
+        <Ionicons
+          name="reorder-three-outline"
+          size={22}
+          color={colors.textSecondary}
+          style={styles.selectIcon}
+        />
+        <Image
+          source={placeholderIcon}
+          style={[styles.songRowArt, { backgroundColor: colors.surface }]}
+        />
+        <View style={styles.metaTextContainer}>
+          <Text
+            style={[styles.songTitleLabel, { color: colors.text }]}
+            numberOfLines={1}
+          >
+            {item.title}
+          </Text>
+          <Text
+            style={[styles.songArtistLabel, { color: colors.textSecondary }]}
+            numberOfLines={1}
+          >
+            {item.artist || "Local Audio"}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    </ScaleDecorator>
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <FlatList
-        data={songs}
-        keyExtractor={(item) => item.id}
-        // Load our optimized static header instance component block
-        ListHeaderComponent={
-          <OptimizedPlaylistHeader
-            title={title || "Playlist"}
-            songCount={songs.length}
-            colors={colors}
-            onBack={() => router.back()}
-          />
-        }
-        contentContainerStyle={styles.listPadding}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No tracks found matching this playlist filter rules yet.
-          </Text>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => playSong(item, songs)}
-            style={styles.songRowItem}
+      {mode === "reorder" ? (
+        <DraggableFlatList
+          data={songs}
+          keyExtractor={(item) => item.id}
+          onDragEnd={({ data }) => handleReorder(data)}
+          renderItem={renderDraggableItem}
+          ListHeaderComponent={headerBlock}
+          contentContainerStyle={styles.listPadding}
+        />
+      ) : (
+        <FlatList
+          data={songs}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={headerBlock}
+          contentContainerStyle={styles.listPadding}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              No tracks found matching this playlist filter rules yet.
+            </Text>
+          }
+          renderItem={
+            mode === "select" ? renderSelectableItem : renderNormalItem
+          }
+        />
+      )}
+
+      {mode === "select" && (
+        <View
+          style={[
+            styles.selectBar,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <Text
+            style={[styles.selectCountText, { color: colors.textSecondary }]}
           >
-            {/* Square Track Thumbnail Artwork Box */}
-            <Image
-              source={placeholderIcon}
-              style={[styles.songRowArt, { backgroundColor: colors.surface }]}
-            />
-
-            {/* Middle Section: Text Labels Stack block */}
-            <View style={styles.metaTextContainer}>
-              <Text
-                style={[styles.songTitleLabel, { color: colors.text }]}
-                numberOfLines={1}
-              >
-                {item.title}
-              </Text>
-              <Text
-                style={[
-                  styles.songArtistLabel,
-                  { color: colors.textSecondary },
-                ]}
-                numberOfLines={1}
-              >
-                {item.artist || "Local Audio"}
-              </Text>
-            </View>
-
-            {/* Right Section: Mini Options Menu Trigger icon dots */}
-            <TouchableOpacity activeOpacity={0.6} style={styles.rowMenuButton}>
-              <Ionicons
-                name="ellipsis-vertical"
-                size={18}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
+            {selectedIds.size} selected
+          </Text>
+          <TouchableOpacity
+            disabled={selectedIds.size === 0}
+            onPress={handleRemoveSelected}
+            style={[
+              styles.removeSelectedBtn,
+              {
+                backgroundColor: "#E94560",
+                opacity: selectedIds.size === 0 ? 0.5 : 1,
+              },
+            ]}
+          >
+            <Text style={styles.removeSelectedText}>Remove</Text>
           </TouchableOpacity>
-        )}
+        </View>
+      )}
+
+      <Modal
+        transparent
+        visible={isMenuOpen}
+        animationType="fade"
+        onRequestClose={() => setIsMenuOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.menuBackdrop}
+          activeOpacity={1}
+          onPress={() => setIsMenuOpen(false)}
+        >
+          <View
+            style={[
+              styles.menuCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setIsMenuOpen(false);
+                setMode("reorder");
+              }}
+            >
+              <Ionicons
+                name="reorder-three-outline"
+                size={18}
+                color={colors.text}
+              />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>
+                Reorder Songs
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setIsMenuOpen(false);
+                setMode("select");
+              }}
+            >
+              <Ionicons name="checkbox-outline" size={18} color={colors.text} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>
+                Remove Songs
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setIsMenuOpen(false);
+                setIsEditModalVisible(true);
+              }}
+            >
+              <Ionicons name="create-outline" size={18} color={colors.text} />
+              <Text style={[styles.menuItemText, { color: colors.text }]}>
+                Edit Playlist
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setIsMenuOpen(false);
+                handleDeletePlaylist();
+              }}
+            >
+              <Ionicons name="trash-outline" size={18} color="#E94560" />
+              <Text style={[styles.menuItemText, { color: "#E94560" }]}>
+                Delete Playlist
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <EditPlaylistModal
+        isVisible={isEditModalVisible}
+        playlist={playlistMeta}
+        onClose={() => setIsEditModalVisible(false)}
+        onSaved={(updated) =>
+          setPlaylistMeta((prev) => (prev ? { ...prev, ...updated } : prev))
+        }
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  loadingCenter: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  listPadding: {
-    paddingBottom: 140, // Keeps bottom rows completely clear of your floating mini player container
-  },
+  container: { flex: 1 },
+  loadingCenter: { flex: 1, justifyContent: "center", alignItems: "center" },
+  listPadding: { paddingBottom: 140 },
   headerContainer: {
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 48, // Secure spacing cushion handling phone safe regions naturally
+    paddingTop: 48,
     marginBottom: 24,
   },
   navRow: {
@@ -217,22 +527,18 @@ const styles = StyleSheet.create({
     height: 48,
     marginBottom: 16,
   },
+  exitModeText: { fontSize: 15, fontWeight: "700" },
   artworkWrapper: {
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
-    // Soft under shadow layouts look premium for big media grids
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
     shadowRadius: 10,
     elevation: 4,
   },
-  mainCdArt: {
-    width: width * 0.56, // Sizing matching your Figma display proportions
-    height: width * 0.56,
-    borderRadius: 16,
-  },
+  mainCdArt: { width: width * 0.56, height: width * 0.56, borderRadius: 16 },
   playlistMainTitle: {
     fontSize: 26,
     fontWeight: "700",
@@ -240,11 +546,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     letterSpacing: 0.2,
   },
-  playlistDescription: {
-    fontSize: 14,
-    fontWeight: "500",
-    textAlign: "center",
-  },
+  playlistDescription: { fontSize: 14, fontWeight: "500", textAlign: "center" },
   emptyText: {
     textAlign: "center",
     marginTop: 40,
@@ -255,27 +557,53 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingVertical: 10, // Snug vertical tracking layout rows matching your prototype image
+    paddingVertical: 10,
   },
-  songRowArt: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    marginRight: 16,
+  selectIcon: { marginRight: 14 },
+  songRowArt: { width: 48, height: 48, borderRadius: 8, marginRight: 16 },
+  metaTextContainer: { flex: 1, paddingRight: 8 },
+  songTitleLabel: { fontSize: 15, fontWeight: "600", marginBottom: 3 },
+  songArtistLabel: { fontSize: 13 },
+  selectBar: {
+    position: "absolute",
+    bottom: 96,
+    left: 16,
+    right: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  metaTextContainer: {
-    flex: 1,
-    paddingRight: 8,
+  selectCountText: { fontSize: 14, fontWeight: "600" },
+  removeSelectedBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 10,
   },
-  songTitleLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-    marginBottom: 3,
+  removeSelectedText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  menuBackdrop: { flex: 1 },
+  menuCard: {
+    position: "absolute",
+    top: 90,
+    right: 20,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 6,
+    minWidth: 190,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  songArtistLabel: {
-    fontSize: 13,
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-  rowMenuButton: {
-    padding: 8,
-  },
+  menuItemText: { fontSize: 14, fontWeight: "600", marginLeft: 10 },
 });

@@ -34,6 +34,26 @@ export async function initializeDatabase() {
     );
   `);
 
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS playlists (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      artwork_path TEXT,
+      created_at INTEGER DEFAULT 0
+    );
+  `);
+
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS playlist_songs (
+      playlist_id TEXT NOT NULL,
+      song_id TEXT NOT NULL,
+      position INTEGER DEFAULT 0,
+      PRIMARY KEY (playlist_id, song_id),
+      FOREIGN KEY(playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
+      FOREIGN KEY(song_id) REFERENCES songs(id) ON DELETE CASCADE
+    );
+  `);
+
   console.log("✅ Melomu Persistent Database completely active and locked!");
 }
 
