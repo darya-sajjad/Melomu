@@ -86,8 +86,10 @@ export default function PlaylistDetailScreen() {
   useEffect(() => {
     async function queryFilteredPlaylistTracks() {
       try {
+        setIsLoading(true); // Restart loader if the id parameter changes dynamically
         const db = await dbAsync;
         let queryStr = "SELECT * FROM songs";
+        let queryParams: any[] = [];
 
         if (id === "recent") {
           queryStr =
@@ -100,9 +102,17 @@ export default function PlaylistDetailScreen() {
             "SELECT * FROM songs WHERE play_count < 3 ORDER BY play_count ASC";
         } else if (id === "favorites") {
           queryStr = "SELECT * FROM songs WHERE is_favorite = 1";
+        } else if (id) {
+          queryStr = `
+            SELECT s.* FROM songs s
+            INNER JOIN playlist_songs ps ON ps.song_id = s.id
+            WHERE ps.playlist_id = ?
+            ORDER BY ps.position ASC
+          `;
+          queryParams = [id];
         }
 
-        const results = await db.getAllAsync<Song>(queryStr);
+        const results = await db.getAllAsync<Song>(queryStr, queryParams);
         setSongs(results);
       } catch (error) {
         console.error("Failed to fetch categorized songs:", error);
