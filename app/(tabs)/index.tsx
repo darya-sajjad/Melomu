@@ -7,9 +7,9 @@ import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Dimensions,
   FlatList,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,79 +17,54 @@ import {
   View,
 } from "react-native";
 
-const { width } = Dimensions.get("window");
-const CARD_SIZE = (width - 52) / 2; // Mathematically fits 2 cards side-by-side with clean spacing
-
-interface PlaylistCard {
+interface SmartPlaylistCard {
   id: string;
   title: string;
-  count: number;
+  subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
   colorPreset: string;
 }
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
   const isFocused = useIsFocused();
-  const [smartPlaylists, setSmartPlaylists] = useState<PlaylistCard[]>([]);
+  const [smartPlaylists, setSmartPlaylists] = useState<SmartPlaylistCard[]>([]);
 
   const loadSmartPlaylistMetrics = useCallback(async () => {
     try {
-      const db = await dbAsync;
-
-      const recentResult: any = await db.getFirstAsync(
-        "SELECT COUNT(*) as total FROM songs WHERE last_played > 0",
-      );
-      const recentCount = recentResult?.total || 0;
-
-      const mostPlayedResult: any = await db.getFirstAsync(
-        "SELECT COUNT(*) as total FROM songs WHERE play_count >= 3",
-      );
-      const mostPlayedCount = mostPlayedResult?.total || 0;
-
-      const leastPlayedResult: any = await db.getFirstAsync(
-        "SELECT COUNT(*) as total FROM songs WHERE play_count < 3",
-      );
-      const leastPlayedCount = leastPlayedResult?.total || 0;
-
-      const favoritesResult: any = await db.getFirstAsync(
-        "SELECT COUNT(*) as total FROM songs WHERE is_favorite = 1",
-      );
-      const favoritesCount = favoritesResult?.total || 0;
-
       setSmartPlaylists([
         {
           id: "recent",
           title: "Recently Played",
-          count: recentCount,
+          subtitle: "Daisy",
           icon: "time-outline",
           colorPreset: "#4E9F3D",
         },
         {
+          id: "favorites",
+          title: "Favourites",
+          subtitle: "Daisy",
+          icon: "heart-outline",
+          colorPreset: "#E94560",
+        },
+        {
           id: "most",
           title: "Most Played",
-          count: mostPlayedCount,
+          subtitle: "Daisy",
           icon: "flame-outline",
           colorPreset: colors.primary,
         },
         {
           id: "least",
           title: "Least Played",
-          count: leastPlayedCount,
+          subtitle: "Daisy",
           icon: "trending-down-outline",
           colorPreset: "#1F4690",
         },
-        {
-          id: "favorites",
-          title: "Favorites",
-          count: favoritesCount,
-          icon: "heart-outline",
-          colorPreset: "#E94560",
-        },
       ]);
     } catch (error) {
-      console.error("Failed to query history metrics:", error);
+      console.error("Failed to set metrics:", error);
     }
   }, [colors.primary]);
 
@@ -125,141 +100,138 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollPadding}
         showsVerticalScrollIndicator={false}
       >
+        {/* Top Header Action */}
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.newPlaylistBtn}
           onPress={() => setCreateModalVisible(true)}
         >
-          <Ionicons
-            name="add-circle-outline"
-            size={22}
-            color={colors.primary}
-          />
-          <Text style={[styles.newPlaylistText, { color: colors.primary }]}>
+          <Ionicons name="add-circle-outline" size={24} color={colors.text} />
+          <Text style={[styles.newPlaylistText, { color: colors.text }]}>
             New Playlist
           </Text>
         </TouchableOpacity>
 
-        <View style={styles.welcomeBlock}>
-          <Text style={[styles.greetingText, { color: colors.textSecondary }]}>
-            {theme === "dark" ? "Good Evening 🌌" : "Good Day ☀️"}
-          </Text>
-          <Text style={[styles.brandHeader, { color: colors.text }]}>
-            Melomu Player
-          </Text>
-        </View>
+        {/* 1. Full-width Thicker Divider after New Playlist Button */}
+        <View
+          style={[styles.thickDivider, { backgroundColor: colors.border }]}
+        />
 
-        <Text style={[styles.sectionHeading, { color: colors.text }]}>
-          Automated Smart Playlists
-        </Text>
-
+        {/* Smart Playlists List */}
         <FlatList
           data={smartPlaylists}
           keyExtractor={(item) => item.id}
-          numColumns={2}
           scrollEnabled={false}
-          columnWrapperStyle={styles.gridRowSpacing}
+          ItemSeparatorComponent={() => (
+            /* 3. 80% Wide Thinner Line between items */
+            <View
+              style={[styles.thinDivider, { backgroundColor: colors.border }]}
+            />
+          )}
           renderItem={({ item }) => (
             <TouchableOpacity
-              activeOpacity={0.85}
-              /* Pass the unique id and playlist card title cleanly over our page query strings */
+              activeOpacity={0.75}
               onPress={() =>
                 router.push({
                   pathname: "/playlist",
                   params: { id: item.id, title: item.title },
                 })
               }
-              style={[
-                styles.playlistCard,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
+              style={styles.playlistRow}
             >
               <View
-                style={[styles.iconBox, { backgroundColor: item.colorPreset }]}
+                style={[
+                  styles.artworkContainer,
+                  { backgroundColor: item.colorPreset },
+                ]}
               >
-                <Ionicons name={item.icon} size={28} color="#FFFFFF" />
+                <Ionicons name={item.icon} size={30} color="#FFFFFF" />
               </View>
 
-              <View style={styles.cardInfo}>
+              <View style={styles.metaContainer}>
                 <Text
-                  style={[styles.cardTitle, { color: colors.text }]}
+                  style={[styles.rowTitle, { color: colors.text }]}
                   numberOfLines={1}
                 >
                   {item.title}
                 </Text>
                 <Text
-                  style={[styles.cardCount, { color: colors.textSecondary }]}
+                  style={[styles.rowSubtitle, { color: colors.textSecondary }]}
+                  numberOfLines={1}
                 >
-                  {item.count} {item.count === 1 ? "Track" : "Tracks"}
+                  {item.subtitle}
                 </Text>
               </View>
             </TouchableOpacity>
           )}
         />
+
+        {/* 2. Full-width Thicker Divider below Smart Playlists */}
         {customPlaylists.length > 0 && (
-          <>
-            <Text
-              style={[
-                styles.sectionHeading,
-                { color: colors.text, marginTop: 28 },
-              ]}
-            >
-              Your Playlists
-            </Text>
-            <FlatList
-              data={customPlaylists}
-              keyExtractor={(item) => item.id}
-              numColumns={2}
-              scrollEnabled={false}
-              columnWrapperStyle={styles.gridRowSpacing}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/playlist",
-                      params: { id: item.id, title: item.name },
-                    })
+          <View
+            style={[
+              styles.thickDivider,
+              { backgroundColor: colors.border, marginTop: 14 },
+            ]}
+          />
+        )}
+
+        {/* Custom Playlists List */}
+        {customPlaylists.length > 0 && (
+          <FlatList
+            data={customPlaylists}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            ItemSeparatorComponent={() => (
+              /* 80% Wide Thinner Line between custom items */
+              <View
+                style={[styles.thinDivider, { backgroundColor: colors.border }]}
+              />
+            )}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() =>
+                  router.push({
+                    pathname: "/playlist",
+                    params: { id: item.id, title: item.name },
+                  })
+                }
+                style={styles.playlistRow}
+              >
+                <Image
+                  source={
+                    item.artwork_path
+                      ? { uri: item.artwork_path }
+                      : placeholderIcon
                   }
-                  style={[
-                    styles.playlistCard,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <Image
-                    source={
-                      item.artwork_path
-                        ? { uri: item.artwork_path }
-                        : placeholderIcon
-                    }
-                    style={styles.iconBox}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.cardInfo}>
-                    <Text
-                      style={[styles.cardTitle, { color: colors.text }]}
-                      numberOfLines={1}
-                    >
-                      {item.name}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.cardCount,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {item.count} {item.count === 1 ? "Track" : "Tracks"}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-            />
-          </>
+                  style={styles.artworkContainer}
+                  resizeMode="cover"
+                />
+
+                <View style={styles.metaContainer}>
+                  <Text
+                    style={[styles.rowTitle, { color: colors.text }]}
+                    numberOfLines={1}
+                  >
+                    {item.name}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.rowSubtitle,
+                      { color: colors.textSecondary },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {item.count} {item.count === 1 ? "Track" : "Tracks"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          />
         )}
       </ScrollView>
+
       <CreatePlaylistModal
         isVisible={isCreateModalVisible}
         onClose={() => setCreateModalVisible(false)}
@@ -275,76 +247,64 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: Platform.OS === "ios" ? 50 : 30,
   },
   scrollPadding: {
-    padding: 20,
-    paddingBottom: 140, // Ensures text lists clear the floating player cleanly
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 140,
   },
   newPlaylistBtn: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    marginBottom: 4,
+    marginBottom: 16,
+    marginTop: 8,
   },
   newPlaylistText: {
-    fontSize: 14,
-    fontWeight: "700",
-    marginLeft: 6,
-  },
-  welcomeBlock: {
-    marginTop: 12,
-    marginBottom: 28,
-  },
-  greetingText: {
-    fontSize: 14,
-    fontWeight: "500",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  brandHeader: {
-    fontSize: 28,
-    fontWeight: "800",
-    marginTop: 4,
-  },
-  sectionHeading: {
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "600",
+    marginLeft: 10,
+  },
+  /* 100% Width Thicker Divider */
+  thickDivider: {
+    width: "120%",
+    height: 2,
+    alignSelf: "center",
     marginBottom: 16,
-    letterSpacing: 0.2,
+    opacity: 0.8,
   },
-  gridRowSpacing: {
-    justifyContent: "space-between",
-    marginBottom: 16,
+  /* 80% Width Thinner Inset Divider */
+  thinDivider: {
+    width: "98%",
+    height: 1,
+    alignSelf: "center",
+    marginVertical: 12,
+    opacity: 0.4,
   },
-  playlistCard: {
-    width: CARD_SIZE,
-    borderRadius: 18,
-    padding: 12,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 2,
+  playlistRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 2,
   },
-  iconBox: {
-    width: "100%",
-    height: CARD_SIZE - 56, // Calculates safe squared box sizing proportions fluidly
-    borderRadius: 14,
+  artworkContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
   },
-  cardInfo: {
-    paddingHorizontal: 2,
+  metaContainer: {
+    flex: 1,
+    marginLeft: 16,
+    justifyContent: "center",
   },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 2,
+  rowTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 4,
   },
-  cardCount: {
-    fontSize: 12,
+  rowSubtitle: {
+    fontSize: 13,
     fontWeight: "500",
   },
 });

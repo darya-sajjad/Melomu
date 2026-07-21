@@ -193,14 +193,32 @@ export default function FullPlayerScreen() {
         </TouchableOpacity>
       </View>
       {/* 6. Footer Lyrics Row Button */}
-      <TouchableOpacity
-        style={styles.footerRow}
-        activeOpacity={0.7}
-        onPress={() => setIsLyricsVisible(true)}
-      >
-        <Text style={[styles.footerText, { color: colors.text }]}>Lyrics</Text>
-        <Ionicons name="menu" size={24} color={colors.text} />
-      </TouchableOpacity>
+      {/* 6. Footer Controls Row (Lyrics + Queue) */}
+      <View style={styles.footerRow}>
+        <TouchableOpacity
+          style={styles.lyricsButton}
+          activeOpacity={0.7}
+          onPress={() => setIsLyricsVisible(true)}
+        >
+          <Text style={[styles.footerText, { color: colors.text }]}>
+            Lyrics
+          </Text>
+          <Ionicons
+            name="chevron-up"
+            size={20}
+            color={colors.text}
+            style={{ marginLeft: 6 }}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.queueButton}
+          activeOpacity={0.7}
+          onPress={() => router.push("./queue")}
+        >
+          <Ionicons name="list" size={26} color={colors.text} />
+        </TouchableOpacity>
+      </View>
       <Modal
         visible={isLyricsVisible}
         animationType="slide"
@@ -357,6 +375,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingTop: 12,
     paddingHorizontal: 4,
+  },
+  lyricsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  queueButton: {
+    padding: 6,
   },
   footerText: {
     fontSize: 18,

@@ -1,5 +1,6 @@
 import placeholderIcon from "@/assets/icon.png";
 import EditPlaylistModal from "@/components/EditPlaylistModal";
+import SwipeableSongRow from "@/components/SwipeableSongRow";
 import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
@@ -262,30 +263,32 @@ export default function PlaylistDetailScreen() {
   );
 
   const renderNormalItem = ({ item }: { item: Song }) => (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={() => playSong(item, songs)}
-      style={styles.songRowItem}
-    >
-      <Image
-        source={placeholderIcon}
-        style={[styles.songRowArt, { backgroundColor: colors.surface }]}
-      />
-      <View style={styles.metaTextContainer}>
-        <Text
-          style={[styles.songTitleLabel, { color: colors.text }]}
-          numberOfLines={1}
-        >
-          {item.title}
-        </Text>
-        <Text
-          style={[styles.songArtistLabel, { color: colors.textSecondary }]}
-          numberOfLines={1}
-        >
-          {item.artist || "Local Audio"}
-        </Text>
-      </View>
-    </TouchableOpacity>
+    <SwipeableSongRow item={item}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => playSong(item, songs)}
+        style={styles.songRowItem}
+      >
+        <Image
+          source={placeholderIcon}
+          style={[styles.songRowArt, { backgroundColor: colors.surface }]}
+        />
+        <View style={styles.metaTextContainer}>
+          <Text
+            style={[styles.songTitleLabel, { color: colors.text }]}
+            numberOfLines={1}
+          >
+            {item.title}
+          </Text>
+          <Text
+            style={[styles.songArtistLabel, { color: colors.textSecondary }]}
+            numberOfLines={1}
+          >
+            {item.artist || "Local Audio"}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    </SwipeableSongRow>
   );
 
   const renderSelectableItem = ({ item }: { item: Song }) => {

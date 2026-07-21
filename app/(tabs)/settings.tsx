@@ -10,6 +10,7 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -316,9 +317,20 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollPadding: { padding: 20, paddingBottom: 140 },
-  title: { fontSize: 24, fontWeight: "700", marginBottom: 24, marginTop: 10 },
+  container: {
+    flex: 1,
+    paddingTop: Platform.OS === "ios" ? 50 : 30,
+  },
+  scrollPadding: {
+    padding: 20,
+    paddingBottom: 140,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 24,
+    marginTop: 10,
+  },
   settingRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -328,10 +340,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 16,
   },
-  settingMeta: { flexDirection: "row", alignItems: "center" },
-  settingLabel: { fontSize: 16, fontWeight: "500", marginLeft: 12 },
-  toggleButton: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10 },
-  toggleButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 12 },
+  settingMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  settingLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginLeft: 12,
+  },
+  toggleButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  toggleButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 12,
+  },
   importButton: {
     flexDirection: "row",
     alignItems: "center",
