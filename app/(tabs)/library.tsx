@@ -1,8 +1,10 @@
 import placeholderIcon from "@/assets/icon.png";
+import AddToPlaylistModal from "@/components/AddToPlaylistModal";
 import EditMetaModal from "@/components/EditMetaModal";
 import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
+import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useState } from "react";
 import {
@@ -34,6 +36,10 @@ export default function LibraryScreen() {
   const isFocused = useIsFocused();
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [addingToPlaylistSong, setAddingToPlaylistSong] = useState<Song | null>(
+    null,
+  );
+  const [isAddToPlaylistVisible, setIsAddToPlaylistVisible] = useState(false);
 
   const fetchSongsFromDatabase = async () => {
     try {
@@ -124,6 +130,21 @@ export default function LibraryScreen() {
             >
               {formatTime(item.duration)}
             </Text>
+            <TouchableOpacity
+              activeOpacity={0.6}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={{ marginLeft: 10 }}
+              onPress={() => {
+                setAddingToPlaylistSong(item);
+                setIsAddToPlaylistVisible(true);
+              }}
+            >
+              <Ionicons
+                name="add-circle-outline"
+                size={22}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
           </TouchableOpacity>
         )}
       />
@@ -134,6 +155,11 @@ export default function LibraryScreen() {
         song={editingSong}
         onClose={() => setIsModalVisible(false)}
         onSaveSuccess={fetchSongsFromDatabase}
+      />
+      <AddToPlaylistModal
+        isVisible={isAddToPlaylistVisible}
+        song={addingToPlaylistSong}
+        onClose={() => setIsAddToPlaylistVisible(false)}
       />
     </View>
   );

@@ -3,6 +3,7 @@ import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function TabLayout() {
   const context = useTheme();
@@ -15,7 +16,7 @@ export default function TabLayout() {
   const { colors } = context;
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: colors.primary,
@@ -78,6 +79,6 @@ export default function TabLayout() {
         />
       </Tabs>
       <MiniPlayer />
-    </>
+    </GestureHandlerRootView>
   );
 }
