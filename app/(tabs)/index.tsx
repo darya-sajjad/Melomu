@@ -1,3 +1,5 @@
+import placeholderIcon from "@/assets/icon.png";
+import CreatePlaylistModal from "@/components/CreatePlaylistModal";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,6 +9,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
   FlatList,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -88,76 +91,184 @@ export default function HomeScreen() {
     } catch (error) {
       console.error("Failed to query history metrics:", error);
     }
-  }, [colors.primary]); // Tells React to only re-generate this function if your primary brand color changes
+  }, [colors.primary]);
 
-  // 2. Add 'loadSmartPlaylistMetrics' to the useEffect dependency array safely now!
+  const [customPlaylists, setCustomPlaylists] = useState<any[]>([]);
+  const [isCreateModalVisible, setCreateModalVisible] = useState(false);
+
+  const loadCustomPlaylists = useCallback(async () => {
+    try {
+      const db = await dbAsync;
+      const results = await db.getAllAsync<any>(`
+        SELECT p.id, p.name, p.artwork_path,
+               (SELECT COUNT(*) FROM playlist_songs ps WHERE ps.playlist_id = p.id) as count
+        FROM playlists p
+        ORDER BY p.created_at DESC
+      `);
+      setCustomPlaylists(results);
+    } catch (error) {
+      console.error("Failed to load custom playlists:", error);
+    }
+  }, []);
+
   useEffect(() => {
     if (isFocused) {
       loadSmartPlaylistMetrics();
+      loadCustomPlaylists();
     }
-  }, [isFocused, loadSmartPlaylistMetrics]);
+  }, [isFocused, loadSmartPlaylistMetrics, loadCustomPlaylists]);
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.scrollPadding}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.welcomeBlock}>
-        <Text style={[styles.greetingText, { color: colors.textSecondary }]}>
-          {theme === "dark" ? "Good Evening 🌌" : "Good Day ☀️"}
-        </Text>
-        <Text style={[styles.brandHeader, { color: colors.text }]}>
-          Melomu Player
-        </Text>
-      </View>
+    <>
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={styles.scrollPadding}
+        showsVerticalScrollIndicator={false}
+      >
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.newPlaylistBtn}
+          onPress={() => setCreateModalVisible(true)}
+        >
+          <Ionicons
+            name="add-circle-outline"
+            size={22}
+            color={colors.primary}
+          />
+          <Text style={[styles.newPlaylistText, { color: colors.primary }]}>
+            New Playlist
+          </Text>
+        </TouchableOpacity>
 
-      <Text style={[styles.sectionHeading, { color: colors.text }]}>
-        Automated Smart Playlists
-      </Text>
+        <View style={styles.welcomeBlock}>
+          <Text style={[styles.greetingText, { color: colors.textSecondary }]}>
+            {theme === "dark" ? "Good Evening 🌌" : "Good Day ☀️"}
+          </Text>
+          <Text style={[styles.brandHeader, { color: colors.text }]}>
+            Melomu Player
+          </Text>
+        </View>
 
-      <FlatList
-        data={smartPlaylists}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        scrollEnabled={false}
-        columnWrapperStyle={styles.gridRowSpacing}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            activeOpacity={0.85}
-            /* Pass the unique id and playlist card title cleanly over our page query strings */
-            onPress={() =>
-              router.push({
-                pathname: "/playlist",
-                params: { id: item.id, title: item.title },
-              })
-            }
-            style={[
-              styles.playlistCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <View
-              style={[styles.iconBox, { backgroundColor: item.colorPreset }]}
+        <Text style={[styles.sectionHeading, { color: colors.text }]}>
+          Automated Smart Playlists
+        </Text>
+
+        <FlatList
+          data={smartPlaylists}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          scrollEnabled={false}
+          columnWrapperStyle={styles.gridRowSpacing}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              /* Pass the unique id and playlist card title cleanly over our page query strings */
+              onPress={() =>
+                router.push({
+                  pathname: "/playlist",
+                  params: { id: item.id, title: item.title },
+                })
+              }
+              style={[
+                styles.playlistCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
             >
-              <Ionicons name={item.icon} size={28} color="#FFFFFF" />
-            </View>
-
-            <View style={styles.cardInfo}>
-              <Text
-                style={[styles.cardTitle, { color: colors.text }]}
-                numberOfLines={1}
+              <View
+                style={[styles.iconBox, { backgroundColor: item.colorPreset }]}
               >
-                {item.title}
-              </Text>
-              <Text style={[styles.cardCount, { color: colors.textSecondary }]}>
-                {item.count} {item.count === 1 ? "Track" : "Tracks"}
-              </Text>
-            </View>
-          </TouchableOpacity>
+                <Ionicons name={item.icon} size={28} color="#FFFFFF" />
+              </View>
+
+              <View style={styles.cardInfo}>
+                <Text
+                  style={[styles.cardTitle, { color: colors.text }]}
+                  numberOfLines={1}
+                >
+                  {item.title}
+                </Text>
+                <Text
+                  style={[styles.cardCount, { color: colors.textSecondary }]}
+                >
+                  {item.count} {item.count === 1 ? "Track" : "Tracks"}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+        {customPlaylists.length > 0 && (
+          <>
+            <Text
+              style={[
+                styles.sectionHeading,
+                { color: colors.text, marginTop: 28 },
+              ]}
+            >
+              Your Playlists
+            </Text>
+            <FlatList
+              data={customPlaylists}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              scrollEnabled={false}
+              columnWrapperStyle={styles.gridRowSpacing}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/playlist",
+                      params: { id: item.id, title: item.name },
+                    })
+                  }
+                  style={[
+                    styles.playlistCard,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Image
+                    source={
+                      item.artwork_path
+                        ? { uri: item.artwork_path }
+                        : placeholderIcon
+                    }
+                    style={styles.iconBox}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.cardInfo}>
+                    <Text
+                      style={[styles.cardTitle, { color: colors.text }]}
+                      numberOfLines={1}
+                    >
+                      {item.name}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.cardCount,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {item.count} {item.count === 1 ? "Track" : "Tracks"}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          </>
         )}
+      </ScrollView>
+      <CreatePlaylistModal
+        isVisible={isCreateModalVisible}
+        onClose={() => setCreateModalVisible(false)}
+        onCreated={() => {
+          setCreateModalVisible(false);
+          loadCustomPlaylists();
+        }}
       />
-    </ScrollView>
+    </>
   );
 }
 
@@ -168,6 +279,17 @@ const styles = StyleSheet.create({
   scrollPadding: {
     padding: 20,
     paddingBottom: 140, // Ensures text lists clear the floating player cleanly
+  },
+  newPlaylistBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    marginBottom: 4,
+  },
+  newPlaylistText: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginLeft: 6,
   },
   welcomeBlock: {
     marginTop: 12,
