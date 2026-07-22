@@ -149,6 +149,8 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  // Location: constants/AudioContext.tsx inside loadAndPlayIndex:
+
   const loadAndPlayIndex = async (index: number) => {
     const list = queueRef.current;
     if (!list.length || index < 0 || index >= list.length) return;
@@ -168,7 +170,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
 
       await loadOfflineCachedLyrics(song.id);
 
-      const { sound } = await Audio.Sound.createAsync(
+      const { sound, status } = await Audio.Sound.createAsync(
         { uri: song.file_path },
         { shouldPlay: true },
       );
@@ -176,10 +178,18 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       soundRef.current = sound;
       setIsPlaying(true);
 
+      // Get exact millisecond duration from loaded status
+      let exactDurationMillis = song.duration;
+      if (status.isLoaded && status.durationMillis) {
+        exactDurationMillis = status.durationMillis;
+        setDuration(status.durationMillis);
+      }
+
+      // ✨ Update DB with REAL duration and play count automatically
       const db = await dbAsync;
       await db.runAsync(
-        "UPDATE songs SET play_count = play_count + 1, last_played = ? WHERE id = ?",
-        [Date.now(), song.id],
+        "UPDATE songs SET play_count = play_count + 1, last_played = ?, duration = ? WHERE id = ?",
+        [Date.now(), exactDurationMillis, song.id],
       );
 
       sound.setOnPlaybackStatusUpdate((status) => {

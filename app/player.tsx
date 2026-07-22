@@ -17,9 +17,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import TextTicker from "react-native-text-ticker";
 
 // Extract layout dimension values safely
-const { width, height: screenHeight } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 export default function FullPlayerScreen() {
   const router = useRouter();
@@ -69,6 +70,15 @@ export default function FullPlayerScreen() {
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
+  // ✨ Helper to format remaining time with a minus (-) sign
+  const formatRemainingTime = (currentMillis: number, totalMillis: number) => {
+    const remainingMillis = Math.max(0, totalMillis - currentMillis);
+    const totalSeconds = Math.floor(remainingMillis / 1000);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `-${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
   const handleFavoritePress = () => {
@@ -121,12 +131,21 @@ export default function FullPlayerScreen() {
       {/* 3. Song Info Labels Row */}
       <View style={styles.songHeaderRow}>
         <View style={styles.metaBlock}>
-          <Text
-            style={[styles.songTitle, { color: colors.text }]}
-            numberOfLines={1}
+          <View
+            pointerEvents="none"
+            style={{ width: "100%", overflow: "hidden" }}
           >
-            {currentSong.title}
-          </Text>
+            <TextTicker
+              style={[styles.songTitle, { color: colors.text }]}
+              duration={13000}
+              loop
+              bounce={false}
+              repeatSpacer={45}
+              marqueeDelay={1200}
+            >
+              {currentSong.title}
+            </TextTicker>
+          </View>
           <Text
             style={[styles.songArtist, { color: colors.textSecondary }]}
             numberOfLines={1}
@@ -168,8 +187,9 @@ export default function FullPlayerScreen() {
           <Text style={[styles.timeText, { color: colors.textSecondary }]}>
             {formatTime(displayedPosition)}
           </Text>
+          {/* ✨ Countdown / Remaining time (-2:47 -> -0:00) */}
           <Text style={[styles.timeText, { color: colors.textSecondary }]}>
-            {formatTime(duration)}
+            {formatRemainingTime(displayedPosition, duration)}
           </Text>
         </View>
       </View>
@@ -228,7 +248,6 @@ export default function FullPlayerScreen() {
           </View>
         </TouchableOpacity>
       </View>
-      {/* 6. Footer Lyrics Row Button */}
       {/* 6. Footer Controls Row (Lyrics + Queue) */}
       <View style={styles.footerRow}>
         <TouchableOpacity
@@ -371,14 +390,16 @@ const styles = StyleSheet.create({
   metaBlock: {
     marginTop: 10,
     marginBottom: 16,
-    flex: 1,
-    paddingRight: 0,
+    width: "80%",
+    alignSelf: "flex-start",
+    overflow: "hidden",
   },
   songTitle: {
     fontSize: 22,
     fontWeight: "700",
     marginBottom: 4,
     letterSpacing: 0.2,
+    width: "100%",
   },
   songArtist: {
     fontSize: 15,

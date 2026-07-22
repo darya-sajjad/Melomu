@@ -6,6 +6,9 @@ import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
+import { Audio } from "expo-av";
+import * as DocumentPicker from "expo-document-picker";
+import * as MediaLibrary from "expo-media-library";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -35,6 +38,7 @@ export default function LibraryScreen() {
   const { colors } = useTheme();
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
   const isFocused = useIsFocused();
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -63,10 +67,88 @@ export default function LibraryScreen() {
     }
   }, [isFocused]);
 
-  // Helper function to convert track runtime integers (seconds) to readable text strings (MM:SS)
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+  // Dynamic Audio Import - Calculates true duration using expo-av metadata
+  const importLocalAudios = async () => {
+    setIsImporting(true);
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        alert("Melomu needs access to your local files to import audio!");
+        return;
+      }
+
+      const pickerResult = await DocumentPicker.getDocumentAsync({
+        type: "audio/*",
+        multiple: true,
+        copyToCacheDirectory: true,
+      });
+
+      if (pickerResult.canceled) return;
+
+      const db = await dbAsync;
+      for (const file of pickerResult.assets) {
+        // Skip duplicate files already present in DB
+        const row: any = await db.getFirstAsync(
+          "SELECT id FROM songs WHERE file_path = ?",
+          [file.uri],
+        );
+        if (row) continue;
+
+        const assetInfo = await MediaLibrary.createAssetAsync(file.uri);
+        const fileNameWithoutExt = file.name.split(".").slice(0, -1).join(".");
+
+        // ✨ Fix 2: Fetch exact duration using expo-av Sound metadata
+        let realDurationMillis = 0;
+        try {
+          const { sound, status: soundStatus } = await Audio.Sound.createAsync(
+            { uri: file.uri },
+            { shouldPlay: false },
+          );
+
+          if (soundStatus.isLoaded && soundStatus.durationMillis) {
+            realDurationMillis = soundStatus.durationMillis;
+          }
+          await sound.unloadAsync();
+        } catch {
+          // Fallback to MediaLibrary asset duration if Sound load fails
+          realDurationMillis = Math.floor((assetInfo.duration || 0) * 1000);
+        }
+
+        // Save true exact calculated duration to SQLite
+        await db.runAsync(
+          `INSERT INTO songs (id, title, artist, album, genre, duration, file_path) 
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            assetInfo.id,
+            fileNameWithoutExt,
+            "Unknown Artist",
+            assetInfo.albumId || "Melomu Imports",
+            "Unknown Genre",
+            realDurationMillis,
+            file.uri,
+          ],
+        );
+      }
+      fetchSongsFromDatabase();
+    } catch (error) {
+      console.error("Audio Import Error:", error);
+      alert(
+        "Failed to import some files. Melomu only supports standard local audio files.",
+      );
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // Converts duration milliseconds into clear "M:SS" string format
+  const formatDuration = (duration: number): string => {
+    if (!duration || duration <= 0) return "0:00";
+
+    const totalSeconds =
+      duration > 10000 ? Math.floor(duration / 1000) : Math.floor(duration);
+
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
@@ -82,14 +164,23 @@ export default function LibraryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {isImporting && (
+        <View style={styles.importingOverlay}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={[styles.importingText, { color: colors.textSecondary }]}>
+            Calculating track metadata & importing...
+          </Text>
+        </View>
+      )}
+
       <FlatList
         data={songs}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listPadding}
         ListEmptyComponent={
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No tracks found in your local collection. Go to Settings to import
-            songs!
+            No tracks found in your local collection. Tap below to import audio
+            files!
           </Text>
         }
         renderItem={({ item }) => {
@@ -144,7 +235,6 @@ export default function LibraryScreen() {
               renderRightActions={renderRightActions}
               overshootRight={false}
               friction={2}
-              // ✨ Triggers consistently on swipe open without complex thresholds
               onSwipeableOpen={() => {
                 addToQueue(item);
                 swipeableRef?.close();
@@ -192,7 +282,7 @@ export default function LibraryScreen() {
                 <Text
                   style={[styles.durationText, { color: colors.textSecondary }]}
                 >
-                  {formatTime(item.duration)}
+                  {formatDuration(item.duration)}
                 </Text>
                 <TouchableOpacity
                   activeOpacity={0.6}
@@ -215,7 +305,6 @@ export default function LibraryScreen() {
         }}
       />
 
-      {/* The Metadata Editor Modal sits cleanly at the root level outside the FlatList */}
       <EditMetaModal
         isVisible={isModalVisible}
         song={editingSong}
@@ -240,6 +329,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  importingOverlay: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+  },
+  importingText: {
+    marginLeft: 8,
+    fontSize: 13,
+    fontWeight: "500",
   },
   listPadding: {
     padding: 16,
