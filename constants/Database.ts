@@ -20,7 +20,6 @@ export async function initializeDatabase() {
       title TEXT NOT NULL,
       artist TEXT,
       album TEXT,
-      genre TEXT,
       duration INTEGER DEFAULT 0,
       custom_artwork_path TEXT,
       play_count INTEGER DEFAULT 0,

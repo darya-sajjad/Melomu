@@ -75,7 +75,7 @@ export default function MiniPlayer() {
             style={[
               styles.progressFill,
               {
-                backgroundColor: colors.primary,
+                backgroundColor: colors.background,
                 width: `${progressPercent}%`,
               },
             ]}
@@ -103,7 +103,7 @@ export default function MiniPlayer() {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    bottom: 85,
+    bottom: 90,
     width: 412,
     alignSelf: "center",
     flexDirection: "row",
