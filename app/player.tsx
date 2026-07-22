@@ -6,6 +6,7 @@ import Slider from "@react-native-community/slider";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Animated,
   Dimensions,
   Image,
   Modal,
@@ -31,6 +32,7 @@ export default function FullPlayerScreen() {
     currentLyrics,
     shuffle,
     repeatMode,
+    isFavorite,
     pauseSong,
     resumeSong,
     playNext,
@@ -39,12 +41,14 @@ export default function FullPlayerScreen() {
     cycleRepeatMode,
     reloadLyrics,
     seekTo,
+    toggleFavorite,
   } = useAudio();
 
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
   const displayedPosition = isSeeking ? seekValue : position;
   const [isLyricsVisible, setIsLyricsVisible] = useState(false);
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (isLyricsVisible) {
@@ -65,6 +69,23 @@ export default function FullPlayerScreen() {
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
+  const handleFavoritePress = () => {
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 1.3,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 4,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    toggleFavorite();
   };
 
   return (
@@ -98,19 +119,34 @@ export default function FullPlayerScreen() {
         />
       </View>
       {/* 3. Song Info Labels Row */}
-      <View style={styles.metaBlock}>
-        <Text
-          style={[styles.songTitle, { color: colors.text }]}
-          numberOfLines={1}
+      <View style={styles.songHeaderRow}>
+        <View style={styles.metaBlock}>
+          <Text
+            style={[styles.songTitle, { color: colors.text }]}
+            numberOfLines={1}
+          >
+            {currentSong.title}
+          </Text>
+          <Text
+            style={[styles.songArtist, { color: colors.textSecondary }]}
+            numberOfLines={1}
+          >
+            {currentSong.artist || "Unknown Artist"}
+          </Text>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleFavoritePress}
+          style={styles.heartBtn}
         >
-          {currentSong.title}
-        </Text>
-        <Text
-          style={[styles.songArtist, { color: colors.textSecondary }]}
-          numberOfLines={1}
-        >
-          {currentSong.artist || "Unknown Artist"}
-        </Text>
+          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+            <Ionicons
+              name={isFavorite ? "heart" : "heart-outline"}
+              size={28}
+              color={isFavorite ? "#E94560" : colors.textSecondary}
+            />
+          </Animated.View>
+        </TouchableOpacity>
       </View>
       <View style={styles.progressDeck}>
         <Slider
@@ -322,11 +358,21 @@ const styles = StyleSheet.create({
   albumArt: {
     width: width * 0.84,
     height: width * 0.84,
-    borderRadius: 16,
+    borderRadius: 10,
+  },
+  songHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    paddingHorizontal: 10,
+    marginVertical: 10,
   },
   metaBlock: {
     marginTop: 10,
     marginBottom: 16,
+    flex: 1,
+    paddingRight: 0,
   },
   songTitle: {
     fontSize: 22,
@@ -336,6 +382,9 @@ const styles = StyleSheet.create({
   },
   songArtist: {
     fontSize: 15,
+  },
+  heartBtn: {
+    padding: 4,
   },
   progressDeck: {
     marginBottom: 20,

@@ -5,6 +5,7 @@ import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -34,6 +35,7 @@ interface Song {
   genre: string;
   duration: number;
   file_path: string;
+  is_favorite?: number;
 }
 
 interface PlaylistMeta {
@@ -49,10 +51,11 @@ const SMART_PLAYLIST_IDS = ["recent", "most", "least", "favorites"];
 export default function PlaylistDetailScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { playSong } = useAudio();
+  const { playSong, toggleFavorite } = useAudio();
 
   const { id, title } = useLocalSearchParams<{ id: string; title: string }>();
   const isCustomPlaylist = !SMART_PLAYLIST_IDS.includes(id || "");
+  const isFavoritesPlaylist = id === "favorites";
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -117,6 +120,15 @@ export default function PlaylistDetailScreen() {
     loadSongs();
     loadPlaylistMeta();
   }, [loadSongs, loadPlaylistMeta]);
+
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused) {
+      loadSongs();
+      loadPlaylistMeta();
+    }
+  }, [isFocused, loadSongs, loadPlaylistMeta]);
 
   const exitMode = () => {
     setMode("normal");
@@ -262,34 +274,68 @@ export default function PlaylistDetailScreen() {
     </View>
   );
 
-  const renderNormalItem = ({ item }: { item: Song }) => (
-    <SwipeableSongRow item={item}>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => playSong(item, songs)}
-        style={styles.songRowItem}
-      >
-        <Image
-          source={placeholderIcon}
-          style={[styles.songRowArt, { backgroundColor: colors.surface }]}
-        />
-        <View style={styles.metaTextContainer}>
-          <Text
-            style={[styles.songTitleLabel, { color: colors.text }]}
-            numberOfLines={1}
+  const renderNormalItem = ({ item }: { item: Song }) => {
+    const isFav = Boolean(item.is_favorite);
+
+    return (
+      <SwipeableSongRow item={item}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => playSong(item, songs)}
+          style={styles.songRowItem}
+        >
+          <Image
+            source={placeholderIcon}
+            style={[styles.songRowArt, { backgroundColor: colors.surface }]}
+          />
+          <View style={styles.metaTextContainer}>
+            <Text
+              style={[styles.songTitleLabel, { color: colors.text }]}
+              numberOfLines={1}
+            >
+              {item.title}
+            </Text>
+            <Text
+              style={[styles.songArtistLabel, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {item.artist || "Local Audio"}
+            </Text>
+          </View>
+
+          {/* Heart toggle button on the right for ALL playlists */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            onPress={async () => {
+              await toggleFavorite(item.id);
+
+              if (isFavoritesPlaylist) {
+                // If we are INSIDE the Favorites playlist screen, untagging removes it from view
+                setSongs((prev) => prev.filter((s) => s.id !== item.id));
+              } else {
+                // In any other playlist, toggle the local row's heart state immediately
+                setSongs((prev) =>
+                  prev.map((s) =>
+                    s.id === item.id
+                      ? { ...s, is_favorite: s.is_favorite ? 0 : 1 }
+                      : s,
+                  ),
+                );
+              }
+            }}
+            style={{ paddingLeft: 12 }}
           >
-            {item.title}
-          </Text>
-          <Text
-            style={[styles.songArtistLabel, { color: colors.textSecondary }]}
-            numberOfLines={1}
-          >
-            {item.artist || "Local Audio"}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    </SwipeableSongRow>
-  );
+            <Ionicons
+              name={isFav ? "heart" : "heart-outline"}
+              size={22}
+              color={isFav ? "#E94560" : colors.textSecondary}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </SwipeableSongRow>
+    );
+  };
 
   const renderSelectableItem = ({ item }: { item: Song }) => {
     const isSelected = selectedIds.has(item.id);

@@ -17,6 +17,7 @@ export interface Song {
   duration: number;
   file_path: string;
   custom_artwork_path?: string | null;
+  is_favorite?: number;
 }
 
 type RepeatMode = "off" | "one" | "all";
@@ -31,6 +32,7 @@ interface AudioContextType {
   repeatMode: RepeatMode;
   queue: Song[];
   currentIndex: number;
+  isFavorite: boolean;
   playSong: (song: Song, queueList?: Song[]) => Promise<void>;
   pauseSong: () => Promise<void>;
   resumeSong: () => Promise<void>;
@@ -45,6 +47,7 @@ interface AudioContextType {
   removeFromQueue: (index: number) => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
   playFromQueue: (index: number) => Promise<void>;
+  toggleFavorite: (songId?: string) => Promise<void>;
 }
 
 const AudioContext = createContext<AudioContextType>({} as AudioContextType);
@@ -60,9 +63,10 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const [shuffle, setShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>("off");
 
-  // State mirror for reactivity in UI components (like QueueScreen)
+  // State mirror for reactivity in UI components
   const [queueState, setQueueState] = useState<Song[]>([]);
   const [currentIndexState, setCurrentIndexState] = useState<number>(-1);
+  const [isFavorite, setIsFavorite] = useState<boolean>(false);
 
   const soundRef = useRef<Audio.Sound | null>(null);
   const originalQueueRef = useRef<Song[]>([]);
@@ -87,6 +91,15 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     repeatModeRef.current = repeatMode;
   }, [repeatMode]);
+
+  // Synchronize isFavorite whenever currentSong changes
+  useEffect(() => {
+    if (currentSong) {
+      setIsFavorite(Boolean(currentSong.is_favorite));
+    } else {
+      setIsFavorite(false);
+    }
+  }, [currentSong]);
 
   useEffect(() => {
     Audio.setAudioModeAsync({
@@ -392,6 +405,48 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     await loadAndPlayIndex(index);
   };
 
+  const toggleFavorite = async (songId?: string) => {
+    const targetId = songId || currentSong?.id;
+    if (!targetId) return;
+
+    try {
+      const db = await dbAsync;
+
+      // 1. Fetch current favorite status
+      const row: any = await db.getFirstAsync(
+        "SELECT is_favorite FROM songs WHERE id = ?",
+        [targetId],
+      );
+      const newStatus = row?.is_favorite ? 0 : 1;
+
+      // 2. Persist update in Database
+      await db.runAsync("UPDATE songs SET is_favorite = ? WHERE id = ?", [
+        newStatus,
+        targetId,
+      ]);
+
+      // 3. Update active song state if matching
+      if (currentSong && currentSong.id === targetId) {
+        setCurrentSong((prev) =>
+          prev ? { ...prev, is_favorite: newStatus } : prev,
+        );
+        setIsFavorite(Boolean(newStatus));
+      }
+
+      // 4. Update queue references to keep UI synced across tabs
+      const updateList = (list: Song[]) =>
+        list.map((s) =>
+          s.id === targetId ? { ...s, is_favorite: newStatus } : s,
+        );
+
+      const updatedQueue = updateList(queueRef.current);
+      originalQueueRef.current = updateList(originalQueueRef.current);
+      updateQueueState(updatedQueue, indexRef.current);
+    } catch (error) {
+      console.error("❌ Failed to toggle favorite status:", error);
+    }
+  };
+
   return (
     <AudioContext.Provider
       value={{
@@ -404,6 +459,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         repeatMode,
         queue: queueState,
         currentIndex: currentIndexState,
+        isFavorite,
         playSong,
         pauseSong,
         resumeSong,
@@ -418,6 +474,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         removeFromQueue,
         reorderQueue,
         playFromQueue,
+        toggleFavorite,
       }}
     >
       {children}
