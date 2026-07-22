@@ -6,6 +6,7 @@ import Slider from "@react-native-community/slider";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Animated,
   Dimensions,
   Image,
   Modal,
@@ -16,9 +17,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import TextTicker from "react-native-text-ticker";
 
 // Extract layout dimension values safely
-const { width, height: screenHeight } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 export default function FullPlayerScreen() {
   const router = useRouter();
@@ -31,6 +33,7 @@ export default function FullPlayerScreen() {
     currentLyrics,
     shuffle,
     repeatMode,
+    isFavorite,
     pauseSong,
     resumeSong,
     playNext,
@@ -39,12 +42,14 @@ export default function FullPlayerScreen() {
     cycleRepeatMode,
     reloadLyrics,
     seekTo,
+    toggleFavorite,
   } = useAudio();
 
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
   const displayedPosition = isSeeking ? seekValue : position;
   const [isLyricsVisible, setIsLyricsVisible] = useState(false);
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (isLyricsVisible) {
@@ -65,6 +70,32 @@ export default function FullPlayerScreen() {
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
+  // ✨ Helper to format remaining time with a minus (-) sign
+  const formatRemainingTime = (currentMillis: number, totalMillis: number) => {
+    const remainingMillis = Math.max(0, totalMillis - currentMillis);
+    const totalSeconds = Math.floor(remainingMillis / 1000);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `-${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
+  const handleFavoritePress = () => {
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 1.3,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 4,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    toggleFavorite();
   };
 
   return (
@@ -98,19 +129,43 @@ export default function FullPlayerScreen() {
         />
       </View>
       {/* 3. Song Info Labels Row */}
-      <View style={styles.metaBlock}>
-        <Text
-          style={[styles.songTitle, { color: colors.text }]}
-          numberOfLines={1}
+      <View style={styles.songHeaderRow}>
+        <View style={styles.metaBlock}>
+          <View
+            pointerEvents="none"
+            style={{ width: "100%", overflow: "hidden" }}
+          >
+            <TextTicker
+              style={[styles.songTitle, { color: colors.text }]}
+              duration={13000}
+              loop
+              bounce={false}
+              repeatSpacer={45}
+              marqueeDelay={1200}
+            >
+              {currentSong.title}
+            </TextTicker>
+          </View>
+          <Text
+            style={[styles.songArtist, { color: colors.textSecondary }]}
+            numberOfLines={1}
+          >
+            {currentSong.artist || "Unknown Artist"}
+          </Text>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleFavoritePress}
+          style={styles.heartBtn}
         >
-          {currentSong.title}
-        </Text>
-        <Text
-          style={[styles.songArtist, { color: colors.textSecondary }]}
-          numberOfLines={1}
-        >
-          {currentSong.artist || "Unknown Artist"}
-        </Text>
+          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+            <Ionicons
+              name={isFavorite ? "heart" : "heart-outline"}
+              size={28}
+              color={isFavorite ? "#E94560" : colors.textSecondary}
+            />
+          </Animated.View>
+        </TouchableOpacity>
       </View>
       <View style={styles.progressDeck}>
         <Slider
@@ -132,8 +187,9 @@ export default function FullPlayerScreen() {
           <Text style={[styles.timeText, { color: colors.textSecondary }]}>
             {formatTime(displayedPosition)}
           </Text>
+          {/* ✨ Countdown / Remaining time (-2:47 -> -0:00) */}
           <Text style={[styles.timeText, { color: colors.textSecondary }]}>
-            {formatTime(duration)}
+            {formatRemainingTime(displayedPosition, duration)}
           </Text>
         </View>
       </View>
@@ -192,15 +248,32 @@ export default function FullPlayerScreen() {
           </View>
         </TouchableOpacity>
       </View>
-      {/* 6. Footer Lyrics Row Button */}
-      <TouchableOpacity
-        style={styles.footerRow}
-        activeOpacity={0.7}
-        onPress={() => setIsLyricsVisible(true)}
-      >
-        <Text style={[styles.footerText, { color: colors.text }]}>Lyrics</Text>
-        <Ionicons name="menu" size={24} color={colors.text} />
-      </TouchableOpacity>
+      {/* 6. Footer Controls Row (Lyrics + Queue) */}
+      <View style={styles.footerRow}>
+        <TouchableOpacity
+          style={styles.lyricsButton}
+          activeOpacity={0.7}
+          onPress={() => setIsLyricsVisible(true)}
+        >
+          <Text style={[styles.footerText, { color: colors.text }]}>
+            Lyrics
+          </Text>
+          <Ionicons
+            name="chevron-up"
+            size={20}
+            color={colors.text}
+            style={{ marginLeft: 6 }}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.queueButton}
+          activeOpacity={0.7}
+          onPress={() => router.push("./queue")}
+        >
+          <Ionicons name="list" size={26} color={colors.text} />
+        </TouchableOpacity>
+      </View>
       <Modal
         visible={isLyricsVisible}
         animationType="slide"
@@ -304,20 +377,35 @@ const styles = StyleSheet.create({
   albumArt: {
     width: width * 0.84,
     height: width * 0.84,
-    borderRadius: 16,
+    borderRadius: 10,
+  },
+  songHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    paddingHorizontal: 10,
+    marginVertical: 10,
   },
   metaBlock: {
     marginTop: 10,
     marginBottom: 16,
+    width: "80%",
+    alignSelf: "flex-start",
+    overflow: "hidden",
   },
   songTitle: {
     fontSize: 22,
     fontWeight: "700",
     marginBottom: 4,
     letterSpacing: 0.2,
+    width: "100%",
   },
   songArtist: {
     fontSize: 15,
+  },
+  heartBtn: {
+    padding: 4,
   },
   progressDeck: {
     marginBottom: 20,
@@ -357,6 +445,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingTop: 12,
     paddingHorizontal: 4,
+  },
+  lyricsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  queueButton: {
+    padding: 6,
   },
   footerText: {
     fontSize: 18,

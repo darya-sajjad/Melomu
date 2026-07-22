@@ -45,6 +45,10 @@ function AppContent() {
           name="player"
           options={{ presentation: "modal", headerShown: false }}
         />
+        <Stack.Screen
+          name="queue"
+          options={{ presentation: "modal", headerShown: false }}
+        />
       </Stack>
       <StatusBar style={context.theme === "dark" ? "light" : "dark"} />
 

@@ -1,9 +1,11 @@
 import placeholderIcon from "@/assets/icon.png";
 import EditPlaylistModal from "@/components/EditPlaylistModal";
+import SwipeableSongRow from "@/components/SwipeableSongRow";
 import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -33,6 +35,8 @@ interface Song {
   genre: string;
   duration: number;
   file_path: string;
+  is_favorite?: number;
+  custom_artwork_path?: string | null;
 }
 
 interface PlaylistMeta {
@@ -48,10 +52,11 @@ const SMART_PLAYLIST_IDS = ["recent", "most", "least", "favorites"];
 export default function PlaylistDetailScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { playSong } = useAudio();
+  const { playSong, toggleFavorite } = useAudio();
 
   const { id, title } = useLocalSearchParams<{ id: string; title: string }>();
   const isCustomPlaylist = !SMART_PLAYLIST_IDS.includes(id || "");
+  const isFavoritesPlaylist = id === "favorites";
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,23 +104,37 @@ export default function PlaylistDetailScreen() {
   }, [id]);
 
   const loadPlaylistMeta = useCallback(async () => {
-    if (!isCustomPlaylist || !id) return;
+    if (!id) return;
     try {
       const db = await dbAsync;
+      setPlaylistMeta(null);
       const row = await db.getFirstAsync<PlaylistMeta>(
         "SELECT id, name, artwork_path FROM playlists WHERE id = ?",
         [id],
       );
-      if (row) setPlaylistMeta(row);
+
+      if (row) {
+        setPlaylistMeta(row);
+      } else {
+        setPlaylistMeta({
+          id: id,
+          name: title || "Automated List",
+          artwork_path: null,
+        });
+      }
     } catch (error) {
       console.error("Failed to load playlist meta:", error);
     }
-  }, [id, isCustomPlaylist]);
+  }, [id, title]);
+
+  const isFocused = useIsFocused();
 
   useEffect(() => {
-    loadSongs();
-    loadPlaylistMeta();
-  }, [loadSongs, loadPlaylistMeta]);
+    if (isFocused) {
+      loadSongs();
+      loadPlaylistMeta();
+    }
+  }, [isFocused, loadSongs, loadPlaylistMeta]);
 
   const exitMode = () => {
     setMode("normal");
@@ -261,32 +280,59 @@ export default function PlaylistDetailScreen() {
     </View>
   );
 
-  const renderNormalItem = ({ item }: { item: Song }) => (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={() => playSong(item, songs)}
-      style={styles.songRowItem}
-    >
-      <Image
-        source={placeholderIcon}
-        style={[styles.songRowArt, { backgroundColor: colors.surface }]}
-      />
-      <View style={styles.metaTextContainer}>
-        <Text
-          style={[styles.songTitleLabel, { color: colors.text }]}
-          numberOfLines={1}
+  const renderNormalItem = ({ item }: { item: Song }) => {
+    return (
+      <SwipeableSongRow item={item}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => playSong(item, songs)}
+          style={styles.songRowItem}
         >
-          {item.title}
-        </Text>
-        <Text
-          style={[styles.songArtistLabel, { color: colors.textSecondary }]}
-          numberOfLines={1}
-        >
-          {item.artist || "Local Audio"}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+          <Image
+            source={
+              item.custom_artwork_path
+                ? { uri: item.custom_artwork_path } // Show custom artwork
+                : placeholderIcon // Fallback to placeholder (or just remove the Image altogether)
+            }
+            style={[styles.songRowArt, { backgroundColor: colors.surface }]}
+          />
+          <View style={styles.metaTextContainer}>
+            <Text
+              style={[styles.songTitleLabel, { color: colors.text }]}
+              numberOfLines={1}
+            >
+              {item.title}
+            </Text>
+            <Text
+              style={[styles.songArtistLabel, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {item.artist || "Local Audio"}
+            </Text>
+          </View>
+
+          {/* ✨ Heart Icon: Render ONLY inside dedicated Favorites Playlist screen ✨ */}
+          {isFavoritesPlaylist && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              onPress={async () => {
+                // Perform context logic, flipping DB entry status
+                await toggleFavorite(item.id);
+
+                // ✅ Inside dedicated Favorites screen itself: Untagging removes it from current local screen state logic immediately logic smoothly immediately view smoothly
+                setSongs((prev) => prev.filter((s) => s.id !== item.id));
+              }}
+              style={{ paddingLeft: 12 }}
+            >
+              {/* Inside dedicated favorites, only filled heart icon state makes design sense logic smoothly immediately makes sense sense */}
+              <Ionicons name="heart" size={22} color="#E94560" />
+            </TouchableOpacity>
+          )}
+        </TouchableOpacity>
+      </SwipeableSongRow>
+    );
+  };
 
   const renderSelectableItem = ({ item }: { item: Song }) => {
     const isSelected = selectedIds.has(item.id);

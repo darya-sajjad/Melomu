@@ -1,7 +1,6 @@
-import placeholderIcon from "@/assets/icon.png";
-import AddToPlaylistModal from "@/components/AddToPlaylistModal";
-import EditMetaModal from "@/components/EditMetaModal";
-import { useAudio } from "@/constants/AudioContext";
+import AlbumsTab from "@/components/AlbumsTab";
+import ArtistsTab from "@/components/ArtistsTab";
+import SongsTab, { Song } from "@/components/SongsTab";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,37 +8,24 @@ import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
-  Image,
+  Platform,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 
-interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  album: string;
-  genre: string;
-  duration: number;
-  file_path: string;
-  custom_artwork_path?: string | null;
-}
+type CategoryTab = "songs" | "albums" | "artists";
 
 export default function LibraryScreen() {
   const { colors } = useTheme();
-  const { playSong } = useAudio();
+  const isFocused = useIsFocused();
+
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const isFocused = useIsFocused();
-  const [editingSong, setEditingSong] = useState<Song | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [addingToPlaylistSong, setAddingToPlaylistSong] = useState<Song | null>(
-    null,
-  );
-  const [isAddToPlaylistVisible, setIsAddToPlaylistVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<CategoryTab>("songs");
 
   const fetchSongsFromDatabase = async () => {
     try {
@@ -59,13 +45,6 @@ export default function LibraryScreen() {
     }
   }, [isFocused]);
 
-  // Helper function to convert track runtime integers (seconds) to readable text strings (MM:SS)
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
-  };
-
   if (isLoading) {
     return (
       <View
@@ -77,90 +56,124 @@ export default function LibraryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <FlatList
-        data={songs}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listPadding}
-        ListEmptyComponent={
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No tracks found in your local collection. Go to Settings to import
-            songs!
-          </Text>
-        }
-        renderItem={({ item }) => (
+    <View style={[styles.container, { backgroundColor: "#1E1E1E" }]}>
+      {/* 1. Top Section: Search Bar floating over root background */}
+      <View style={styles.topSection}>
+        <View
+          style={[
+            styles.searchBarContainer,
+            { backgroundColor: "#FFFFFF", borderColor: "transparent" },
+          ]}
+        >
+          <TextInput
+            placeholder="Search..."
+            placeholderTextColor="#8E8E93"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+          />
+          <Ionicons name="search" size={20} color="#000000" />
+        </View>
+      </View>
+
+      {/* 2. Curved Main Sheet Container containing Tabs + Lists */}
+      <View
+        style={[
+          styles.curvedSheet,
+          {
+            backgroundColor: colors.background,
+            borderColor: colors.background,
+          },
+        ]}
+      >
+        {/* Category Filter Pills Row */}
+        <View style={styles.tabBar}>
           <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => playSong(item, songs)}
-            onLongPress={() => {
-              setEditingSong(item);
-              setIsModalVisible(true);
-            }}
+            activeOpacity={0.8}
             style={[
-              styles.songCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              styles.tabPill,
+              activeTab === "songs"
+                ? { backgroundColor: "#B2EBF2" } // Active Pill Color matching Figma
+                : { backgroundColor: colors.background },
             ]}
+            onPress={() => setActiveTab("songs")}
           >
-            <Image
-              source={
-                item.custom_artwork_path
-                  ? { uri: item.custom_artwork_path }
-                  : placeholderIcon
-              }
-              style={styles.artworkThumbnail}
-            />
-
-            <View style={styles.metaContainer}>
-              <Text
-                style={[styles.songTitle, { color: colors.text }]}
-                numberOfLines={1}
-              >
-                {item.title}
-              </Text>
-              <Text
-                style={[styles.songArtist, { color: colors.textSecondary }]}
-                numberOfLines={1}
-              >
-                {item.artist} • {item.album}
-              </Text>
-            </View>
-
             <Text
-              style={[styles.durationText, { color: colors.textSecondary }]}
+              style={[
+                styles.tabPillText,
+                {
+                  color: activeTab === "songs" ? "#000000" : colors.text,
+                },
+              ]}
             >
-              {formatTime(item.duration)}
+              Songs
             </Text>
-            <TouchableOpacity
-              activeOpacity={0.6}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={{ marginLeft: 10 }}
-              onPress={() => {
-                setAddingToPlaylistSong(item);
-                setIsAddToPlaylistVisible(true);
-              }}
-            >
-              <Ionicons
-                name="add-circle-outline"
-                size={22}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
           </TouchableOpacity>
-        )}
-      />
 
-      {/* The Metadata Editor Modal sits cleanly at the root level outside the FlatList */}
-      <EditMetaModal
-        isVisible={isModalVisible}
-        song={editingSong}
-        onClose={() => setIsModalVisible(false)}
-        onSaveSuccess={fetchSongsFromDatabase}
-      />
-      <AddToPlaylistModal
-        isVisible={isAddToPlaylistVisible}
-        song={addingToPlaylistSong}
-        onClose={() => setIsAddToPlaylistVisible(false)}
-      />
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[
+              styles.tabPill,
+              activeTab === "albums"
+                ? { backgroundColor: "#B2EBF2" }
+                : { backgroundColor: colors.background },
+            ]}
+            onPress={() => setActiveTab("albums")}
+          >
+            <Text
+              style={[
+                styles.tabPillText,
+                {
+                  color: activeTab === "albums" ? "#000000" : colors.text,
+                },
+              ]}
+            >
+              Albums
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[
+              styles.tabPill,
+              activeTab === "artists"
+                ? { backgroundColor: "#B2EBF2" }
+                : { backgroundColor: colors.background },
+            ]}
+            onPress={() => setActiveTab("artists")}
+          >
+            <Text
+              style={[
+                styles.tabPillText,
+                {
+                  color: activeTab === "artists" ? "#000000" : colors.text,
+                },
+              ]}
+            >
+              Artists
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Dynamic Tab Content Views */}
+        <View style={{ flex: 1 }}>
+          {activeTab === "songs" && (
+            <SongsTab
+              songs={songs}
+              searchQuery={searchQuery}
+              onRefreshDatabase={fetchSongsFromDatabase}
+            />
+          )}
+
+          {activeTab === "albums" && (
+            <AlbumsTab songs={songs} searchQuery={searchQuery} />
+          )}
+
+          {activeTab === "artists" && (
+            <ArtistsTab songs={songs} searchQuery={searchQuery} />
+          )}
+        </View>
+      </View>
     </View>
   );
 }
@@ -168,54 +181,54 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: Platform.OS === "ios" ? 70 : 30,
   },
   loadingCenter: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  listPadding: {
-    padding: 16,
+  topSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
-  emptyText: {
-    textAlign: "center",
-    marginTop: 40,
-    fontSize: 16,
-  },
-  songCard: {
+  searchBarContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    paddingHorizontal: 18,
+    paddingVertical: Platform.OS === "ios" ? 12 : 8,
+    borderRadius: 24,
   },
-  metaContainer: {
+  searchInput: {
     flex: 1,
-    paddingRight: 16,
+    fontSize: 15,
+    color: "#000000",
   },
-  songTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
+  curvedSheet: {
+    flex: 1,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingTop: 20,
+    paddingBottom: 50,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    overflow: "hidden",
   },
-  songArtist: {
-    fontSize: 13,
+  tabBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
-  durationText: {
+  tabPill: {
+    paddingHorizontal: 25,
+    paddingVertical: 10,
+    borderRadius: 20,
+    alignItems: "center",
+    marginHorizontal: 12,
+  },
+  tabPillText: {
     fontSize: 14,
-    fontWeight: "500",
-  },
-  artworkThumbnail: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    marginRight: 14,
+    fontWeight: "700",
   },
 });
