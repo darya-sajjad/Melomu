@@ -2,7 +2,11 @@ import * as SQLite from "expo-sqlite";
 
 export const dbAsync = SQLite.openDatabaseAsync("melomu.db");
 
+let isDbInitialized = false;
+
 export async function initializeDatabase() {
+  if (isDbInitialized) return;
+
   const db = await dbAsync;
 
   await db.execAsync("PRAGMA foreign_keys = ON;");
@@ -23,27 +27,21 @@ export async function initializeDatabase() {
       last_played INTEGER DEFAULT 0,
       is_favorite INTEGER DEFAULT 0
     );
-  `);
 
-  await db.execAsync(`
     CREATE TABLE IF NOT EXISTS lyrics_cache (
       song_id TEXT PRIMARY KEY NOT NULL,
       lyrics_text TEXT,               
       synced_lines TEXT,               
       FOREIGN KEY(song_id) REFERENCES songs(id) ON DELETE CASCADE
     );
-  `);
 
-  await db.execAsync(`
     CREATE TABLE IF NOT EXISTS playlists (
       id TEXT PRIMARY KEY NOT NULL,
       name TEXT NOT NULL,
       artwork_path TEXT,
       created_at INTEGER DEFAULT 0
     );
-  `);
 
-  await db.execAsync(`
     CREATE TABLE IF NOT EXISTS playlist_songs (
       playlist_id TEXT NOT NULL,
       song_id TEXT NOT NULL,
@@ -54,10 +52,10 @@ export async function initializeDatabase() {
     );
   `);
 
+  isDbInitialized = true;
   console.log("✅ Melomu Persistent Database completely active and locked!");
 }
 
 export async function seedMockSongs() {
-  // We leave this completely empty so it never runs accidental overwrites on reload!
   console.log("ℹ️ Dynamic User Collection Active. Skipping template seeding.");
 }

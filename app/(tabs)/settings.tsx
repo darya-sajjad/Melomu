@@ -3,7 +3,8 @@ import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { Buffer } from "buffer";
-import * as DocumentPicker from "expo-document-picker"; // <-- Clean, proper package name
+import { Audio } from "expo-av"; // ✨ Added to probe audio duration
+import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { parseBuffer } from "music-metadata";
 import React, { useEffect, useState } from "react";
@@ -178,7 +179,22 @@ export default function SettingsScreen() {
         .replace(/\.(mp3|m4a|wav|flac)$/i, "")
         .replace(/_/g, " ");
       const uniqueSongId = `user_track_${Date.now()}`;
-      const fallbackDuration = 185;
+
+      // ✨ Dynamically calculate true track duration in milliseconds
+      let exactDurationMillis = 0;
+      try {
+        const { sound, status } = await Audio.Sound.createAsync(
+          { uri: permanentFilePath },
+          { shouldPlay: false },
+        );
+
+        if (status.isLoaded && status.durationMillis) {
+          exactDurationMillis = status.durationMillis;
+        }
+        await sound.unloadAsync();
+      } catch (durationErr) {
+        console.warn("Could not determine duration on import:", durationErr);
+      }
 
       const extractedArtPath = await extractEmbeddedArtwork(
         permanentFilePath,
@@ -195,8 +211,8 @@ export default function SettingsScreen() {
           "Imported Track",
           "My Files",
           "Local",
-          fallbackDuration,
-          extractedArtPath, // Save local picture path row link
+          exactDurationMillis, // ✨ Real computed duration saved here!
+          extractedArtPath,
         ],
       );
 
@@ -315,7 +331,6 @@ export default function SettingsScreen() {
     </ScrollView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

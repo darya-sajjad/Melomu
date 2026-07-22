@@ -4,7 +4,8 @@ import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
+import TextTicker from "react-native-text-ticker";
 
 export default function MiniPlayer() {
   const router = useRouter();
@@ -49,19 +50,21 @@ export default function MiniPlayer() {
       {/* Middle Block: Labels + Figma Progress Bar Stack */}
       <View style={styles.metaContainer}>
         <View style={styles.textRow}>
-          <Text
-            style={[styles.title, { color: colors.text }]}
-            numberOfLines={1}
+          <View
+            pointerEvents="none"
+            style={{ width: "100%", overflow: "hidden" }}
           >
-            {currentSong.title}
-          </Text>
-          <Text
-            style={[styles.artist, { color: colors.textSecondary }]}
-            numberOfLines={1}
-          >
-            {" • "}
-            {currentSong.artist}
-          </Text>
+            <TextTicker
+              style={[styles.title, { color: colors.text }]}
+              duration={11000}
+              loop
+              bounce={false}
+              repeatSpacer={40}
+              marqueeDelay={1200}
+            >
+              {`${currentSong.title} • ${currentSong.artist || "Unknown Artist"}`}
+            </TextTicker>
+          </View>
         </View>
 
         {/* Custom Figma Progress Line Tracker Track */}
@@ -132,11 +135,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     paddingRight: 12,
+    overflow: "hidden",
   },
   textRow: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 8,
+    width: "100%",
+    overflow: "hidden",
   },
   title: {
     fontSize: 14,

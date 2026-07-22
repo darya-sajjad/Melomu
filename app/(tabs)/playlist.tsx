@@ -36,6 +36,7 @@ interface Song {
   duration: number;
   file_path: string;
   is_favorite?: number;
+  custom_artwork_path?: string | null;
 }
 
 interface PlaylistMeta {
@@ -103,23 +104,28 @@ export default function PlaylistDetailScreen() {
   }, [id]);
 
   const loadPlaylistMeta = useCallback(async () => {
-    if (!isCustomPlaylist || !id) return;
+    if (!id) return;
     try {
       const db = await dbAsync;
+      setPlaylistMeta(null);
       const row = await db.getFirstAsync<PlaylistMeta>(
         "SELECT id, name, artwork_path FROM playlists WHERE id = ?",
         [id],
       );
-      if (row) setPlaylistMeta(row);
+
+      if (row) {
+        setPlaylistMeta(row);
+      } else {
+        setPlaylistMeta({
+          id: id,
+          name: title || "Automated List",
+          artwork_path: null,
+        });
+      }
     } catch (error) {
       console.error("Failed to load playlist meta:", error);
     }
-  }, [id, isCustomPlaylist]);
-
-  useEffect(() => {
-    loadSongs();
-    loadPlaylistMeta();
-  }, [loadSongs, loadPlaylistMeta]);
+  }, [id, title]);
 
   const isFocused = useIsFocused();
 
@@ -275,8 +281,6 @@ export default function PlaylistDetailScreen() {
   );
 
   const renderNormalItem = ({ item }: { item: Song }) => {
-    const isFav = Boolean(item.is_favorite);
-
     return (
       <SwipeableSongRow item={item}>
         <TouchableOpacity
@@ -285,7 +289,11 @@ export default function PlaylistDetailScreen() {
           style={styles.songRowItem}
         >
           <Image
-            source={placeholderIcon}
+            source={
+              item.custom_artwork_path
+                ? { uri: item.custom_artwork_path } // Show custom artwork
+                : placeholderIcon // Fallback to placeholder (or just remove the Image altogether)
+            }
             style={[styles.songRowArt, { backgroundColor: colors.surface }]}
           />
           <View style={styles.metaTextContainer}>
@@ -303,35 +311,24 @@ export default function PlaylistDetailScreen() {
             </Text>
           </View>
 
-          {/* Heart toggle button on the right for ALL playlists */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            onPress={async () => {
-              await toggleFavorite(item.id);
+          {/* ✨ Heart Icon: Render ONLY inside dedicated Favorites Playlist screen ✨ */}
+          {isFavoritesPlaylist && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              onPress={async () => {
+                // Perform context logic, flipping DB entry status
+                await toggleFavorite(item.id);
 
-              if (isFavoritesPlaylist) {
-                // If we are INSIDE the Favorites playlist screen, untagging removes it from view
+                // ✅ Inside dedicated Favorites screen itself: Untagging removes it from current local screen state logic immediately logic smoothly immediately view smoothly
                 setSongs((prev) => prev.filter((s) => s.id !== item.id));
-              } else {
-                // In any other playlist, toggle the local row's heart state immediately
-                setSongs((prev) =>
-                  prev.map((s) =>
-                    s.id === item.id
-                      ? { ...s, is_favorite: s.is_favorite ? 0 : 1 }
-                      : s,
-                  ),
-                );
-              }
-            }}
-            style={{ paddingLeft: 12 }}
-          >
-            <Ionicons
-              name={isFav ? "heart" : "heart-outline"}
-              size={22}
-              color={isFav ? "#E94560" : colors.textSecondary}
-            />
-          </TouchableOpacity>
+              }}
+              style={{ paddingLeft: 12 }}
+            >
+              {/* Inside dedicated favorites, only filled heart icon state makes design sense logic smoothly immediately makes sense sense */}
+              <Ionicons name="heart" size={22} color="#E94560" />
+            </TouchableOpacity>
+          )}
         </TouchableOpacity>
       </SwipeableSongRow>
     );
