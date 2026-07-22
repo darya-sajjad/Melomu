@@ -1,51 +1,31 @@
-import placeholderIcon from "@/assets/icon.png";
-import AddToPlaylistModal from "@/components/AddToPlaylistModal";
-import EditMetaModal from "@/components/EditMetaModal";
-import { useAudio } from "@/constants/AudioContext";
+import AlbumsTab from "@/components/AlbumsTab";
+import ArtistsTab from "@/components/ArtistsTab";
+import SongsTab, { Song } from "@/components/SongsTab";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
-import { Audio } from "expo-av";
-import * as DocumentPicker from "expo-document-picker";
-import * as MediaLibrary from "expo-media-library";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
-  FlatList,
-  Image,
   Platform,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import Swipeable from "react-native-gesture-handler/Swipeable";
 
-interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  album: string;
-  genre: string;
-  duration: number;
-  file_path: string;
-  custom_artwork_path?: string | null;
-}
+type CategoryTab = "songs" | "albums" | "artists";
 
 export default function LibraryScreen() {
   const { colors } = useTheme();
+  const isFocused = useIsFocused();
+
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isImporting, setIsImporting] = useState(false);
-  const isFocused = useIsFocused();
-  const [editingSong, setEditingSong] = useState<Song | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [addingToPlaylistSong, setAddingToPlaylistSong] = useState<Song | null>(
-    null,
-  );
-  const [isAddToPlaylistVisible, setIsAddToPlaylistVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<CategoryTab>("songs");
 
   const fetchSongsFromDatabase = async () => {
     try {
@@ -59,98 +39,11 @@ export default function LibraryScreen() {
     }
   };
 
-  const { playSong, addToQueue } = useAudio();
-
   useEffect(() => {
     if (isFocused) {
       fetchSongsFromDatabase();
     }
   }, [isFocused]);
-
-  // Dynamic Audio Import - Calculates true duration using expo-av metadata
-  const importLocalAudios = async () => {
-    setIsImporting(true);
-    try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== "granted") {
-        alert("Melomu needs access to your local files to import audio!");
-        return;
-      }
-
-      const pickerResult = await DocumentPicker.getDocumentAsync({
-        type: "audio/*",
-        multiple: true,
-        copyToCacheDirectory: true,
-      });
-
-      if (pickerResult.canceled) return;
-
-      const db = await dbAsync;
-      for (const file of pickerResult.assets) {
-        // Skip duplicate files already present in DB
-        const row: any = await db.getFirstAsync(
-          "SELECT id FROM songs WHERE file_path = ?",
-          [file.uri],
-        );
-        if (row) continue;
-
-        const assetInfo = await MediaLibrary.createAssetAsync(file.uri);
-        const fileNameWithoutExt = file.name.split(".").slice(0, -1).join(".");
-
-        // ✨ Fix 2: Fetch exact duration using expo-av Sound metadata
-        let realDurationMillis = 0;
-        try {
-          const { sound, status: soundStatus } = await Audio.Sound.createAsync(
-            { uri: file.uri },
-            { shouldPlay: false },
-          );
-
-          if (soundStatus.isLoaded && soundStatus.durationMillis) {
-            realDurationMillis = soundStatus.durationMillis;
-          }
-          await sound.unloadAsync();
-        } catch {
-          // Fallback to MediaLibrary asset duration if Sound load fails
-          realDurationMillis = Math.floor((assetInfo.duration || 0) * 1000);
-        }
-
-        // Save true exact calculated duration to SQLite
-        await db.runAsync(
-          `INSERT INTO songs (id, title, artist, album, genre, duration, file_path) 
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [
-            assetInfo.id,
-            fileNameWithoutExt,
-            "Unknown Artist",
-            assetInfo.albumId || "Melomu Imports",
-            "Unknown Genre",
-            realDurationMillis,
-            file.uri,
-          ],
-        );
-      }
-      fetchSongsFromDatabase();
-    } catch (error) {
-      console.error("Audio Import Error:", error);
-      alert(
-        "Failed to import some files. Melomu only supports standard local audio files.",
-      );
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
-  // Converts duration milliseconds into clear "M:SS" string format
-  const formatDuration = (duration: number): string => {
-    if (!duration || duration <= 0) return "0:00";
-
-    const totalSeconds =
-      duration > 10000 ? Math.floor(duration / 1000) : Math.floor(duration);
-
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
-  };
 
   if (isLoading) {
     return (
@@ -163,159 +56,124 @@ export default function LibraryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {isImporting && (
-        <View style={styles.importingOverlay}>
-          <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={[styles.importingText, { color: colors.textSecondary }]}>
-            Calculating track metadata & importing...
-          </Text>
+    <View style={[styles.container, { backgroundColor: "#1E1E1E" }]}>
+      {/* 1. Top Section: Search Bar floating over root background */}
+      <View style={styles.topSection}>
+        <View
+          style={[
+            styles.searchBarContainer,
+            { backgroundColor: "#FFFFFF", borderColor: "transparent" },
+          ]}
+        >
+          <TextInput
+            placeholder="Search..."
+            placeholderTextColor="#8E8E93"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+          />
+          <Ionicons name="search" size={20} color="#000000" />
         </View>
-      )}
+      </View>
 
-      <FlatList
-        data={songs}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listPadding}
-        ListEmptyComponent={
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No tracks found in your local collection. Tap below to import audio
-            files!
-          </Text>
-        }
-        renderItem={({ item }) => {
-          let swipeableRef: Swipeable | null = null;
-
-          const renderRightActions = (
-            progress: Animated.AnimatedInterpolation<number>,
-            dragX: Animated.AnimatedInterpolation<number>,
-          ) => {
-            const opacity = dragX.interpolate({
-              inputRange: [-80, -20, 0],
-              outputRange: [1, 0.5, 0],
-              extrapolate: "clamp",
-            });
-
-            const scale = dragX.interpolate({
-              inputRange: [-80, -20, 0],
-              outputRange: [1, 0.8, 0.5],
-              extrapolate: "clamp",
-            });
-
-            const backgroundColor = dragX.interpolate({
-              inputRange: [-80, -30, 0],
-              outputRange: [colors.primary, "#404040", colors.background],
-              extrapolate: "clamp",
-            });
-
-            return (
-              <Animated.View
-                style={{
-                  backgroundColor,
-                  justifyContent: "center",
-                  alignItems: "flex-end",
-                  paddingRight: 24,
-                  flex: 1,
-                  marginVertical: 4,
-                  borderRadius: 12,
-                }}
-              >
-                <Animated.View style={{ opacity, transform: [{ scale }] }}>
-                  <Ionicons name="list" size={24} color="#FFFFFF" />
-                </Animated.View>
-              </Animated.View>
-            );
-          };
-
-          return (
-            <Swipeable
-              ref={(ref) => {
-                swipeableRef = ref;
-              }}
-              renderRightActions={renderRightActions}
-              overshootRight={false}
-              friction={2}
-              onSwipeableOpen={() => {
-                addToQueue(item);
-                swipeableRef?.close();
-              }}
+      {/* 2. Curved Main Sheet Container containing Tabs + Lists */}
+      <View
+        style={[
+          styles.curvedSheet,
+          {
+            backgroundColor: colors.background,
+            borderColor: colors.background,
+          },
+        ]}
+      >
+        {/* Category Filter Pills Row */}
+        <View style={styles.tabBar}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[
+              styles.tabPill,
+              activeTab === "songs"
+                ? { backgroundColor: "#B2EBF2" } // Active Pill Color matching Figma
+                : { backgroundColor: colors.background },
+            ]}
+            onPress={() => setActiveTab("songs")}
+          >
+            <Text
+              style={[
+                styles.tabPillText,
+                {
+                  color: activeTab === "songs" ? "#000000" : colors.text,
+                },
+              ]}
             >
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => playSong(item, songs)}
-                onLongPress={() => {
-                  setEditingSong(item);
-                  setIsModalVisible(true);
-                }}
-                style={[
-                  styles.songCard,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
-                <Image
-                  source={
-                    item.custom_artwork_path
-                      ? { uri: item.custom_artwork_path }
-                      : placeholderIcon
-                  }
-                  style={styles.artworkThumbnail}
-                />
+              Songs
+            </Text>
+          </TouchableOpacity>
 
-                <View style={styles.metaContainer}>
-                  <Text
-                    style={[styles.songTitle, { color: colors.text }]}
-                    numberOfLines={1}
-                  >
-                    {item.title}
-                  </Text>
-                  <Text
-                    style={[styles.songArtist, { color: colors.textSecondary }]}
-                    numberOfLines={1}
-                  >
-                    {item.artist} • {item.album}
-                  </Text>
-                </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[
+              styles.tabPill,
+              activeTab === "albums"
+                ? { backgroundColor: "#B2EBF2" }
+                : { backgroundColor: colors.background },
+            ]}
+            onPress={() => setActiveTab("albums")}
+          >
+            <Text
+              style={[
+                styles.tabPillText,
+                {
+                  color: activeTab === "albums" ? "#000000" : colors.text,
+                },
+              ]}
+            >
+              Albums
+            </Text>
+          </TouchableOpacity>
 
-                <Text
-                  style={[styles.durationText, { color: colors.textSecondary }]}
-                >
-                  {formatDuration(item.duration)}
-                </Text>
-                <TouchableOpacity
-                  activeOpacity={0.6}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  style={{ marginLeft: 10 }}
-                  onPress={() => {
-                    setAddingToPlaylistSong(item);
-                    setIsAddToPlaylistVisible(true);
-                  }}
-                >
-                  <Ionicons
-                    name="add-circle-outline"
-                    size={22}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </TouchableOpacity>
-            </Swipeable>
-          );
-        }}
-      />
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[
+              styles.tabPill,
+              activeTab === "artists"
+                ? { backgroundColor: "#B2EBF2" }
+                : { backgroundColor: colors.background },
+            ]}
+            onPress={() => setActiveTab("artists")}
+          >
+            <Text
+              style={[
+                styles.tabPillText,
+                {
+                  color: activeTab === "artists" ? "#000000" : colors.text,
+                },
+              ]}
+            >
+              Artists
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-      <EditMetaModal
-        isVisible={isModalVisible}
-        song={editingSong}
-        onClose={() => setIsModalVisible(false)}
-        onSaveSuccess={fetchSongsFromDatabase}
-      />
-      <AddToPlaylistModal
-        isVisible={isAddToPlaylistVisible}
-        song={addingToPlaylistSong}
-        onClose={() => setIsAddToPlaylistVisible(false)}
-      />
+        {/* Dynamic Tab Content Views */}
+        <View style={{ flex: 1 }}>
+          {activeTab === "songs" && (
+            <SongsTab
+              songs={songs}
+              searchQuery={searchQuery}
+              onRefreshDatabase={fetchSongsFromDatabase}
+            />
+          )}
+
+          {activeTab === "albums" && (
+            <AlbumsTab songs={songs} searchQuery={searchQuery} />
+          )}
+
+          {activeTab === "artists" && (
+            <ArtistsTab songs={songs} searchQuery={searchQuery} />
+          )}
+        </View>
+      </View>
     </View>
   );
 }
@@ -323,66 +181,54 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "ios" ? 50 : 30,
+    paddingTop: Platform.OS === "ios" ? 70 : 30,
   },
   loadingCenter: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  importingOverlay: {
+  topSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  searchBarContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 8,
+    paddingHorizontal: 18,
+    paddingVertical: Platform.OS === "ios" ? 12 : 8,
+    borderRadius: 24,
   },
-  importingText: {
-    marginLeft: 8,
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  listPadding: {
-    padding: 16,
-  },
-  emptyText: {
-    textAlign: "center",
-    marginTop: 40,
-    fontSize: 16,
-  },
-  songCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  metaContainer: {
+  searchInput: {
     flex: 1,
-    paddingRight: 16,
+    fontSize: 15,
+    color: "#000000",
   },
-  songTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
+  curvedSheet: {
+    flex: 1,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingTop: 20,
+    paddingBottom: 50,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    overflow: "hidden",
   },
-  songArtist: {
-    fontSize: 13,
+  tabBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
-  durationText: {
+  tabPill: {
+    paddingHorizontal: 25,
+    paddingVertical: 10,
+    borderRadius: 20,
+    alignItems: "center",
+    marginHorizontal: 12,
+  },
+  tabPillText: {
     fontSize: 14,
-    fontWeight: "500",
-  },
-  artworkThumbnail: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    marginRight: 14,
+    fontWeight: "700",
   },
 });
