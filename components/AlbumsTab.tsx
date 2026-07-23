@@ -3,12 +3,13 @@ import { useTheme } from "@/constants/ThemeContext";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { Song } from "./SongsTab";
 
@@ -16,6 +17,10 @@ interface AlbumsTabProps {
   songs: Song[];
   searchQuery: string;
 }
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
+// Padding (16*2 = 32) + Gap between cards (16) = 48
+const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 
 export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
   const { colors } = useTheme();
@@ -29,7 +34,6 @@ export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
         acc[albumKey] = {
           name: albumKey,
           artist: song.artist || "Unknown Artist",
-          // ✨ Pick the artwork of the FIRST song in this album group that isn't an artist avatar
           artwork: song.custom_artwork_path,
           tracks: [],
         };
@@ -63,7 +67,6 @@ export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
           </Text>
         }
         renderItem={({ item }) => {
-          // ✨ Grab the first valid album cover from the tracks inside this album
           const firstTrackWithCover = item.tracks.find(
             (t) => t.custom_artwork_path,
           );
@@ -73,7 +76,7 @@ export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
           return (
             <TouchableOpacity
               activeOpacity={0.8}
-              style={styles.albumCard}
+              style={[styles.albumCard, { width: CARD_WIDTH }]}
               onPress={() =>
                 router.push({
                   pathname: "/album",
@@ -83,7 +86,14 @@ export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
             >
               <Image
                 source={coverUri ? { uri: coverUri } : placeholderIcon}
-                style={[styles.albumArt, { backgroundColor: colors.surface }]}
+                style={[
+                  styles.albumArt,
+                  {
+                    width: CARD_WIDTH,
+                    height: CARD_WIDTH,
+                    backgroundColor: colors.surface,
+                  },
+                ]}
                 resizeMode="cover"
               />
               <Text
@@ -119,11 +129,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   albumCard: {
-    width: "47%",
+    // Explicit width applied dynamically inline via CARD_WIDTH
   },
   albumArt: {
-    width: "100%",
-    aspectRatio: 1,
     borderRadius: 16,
     marginBottom: 8,
   },
