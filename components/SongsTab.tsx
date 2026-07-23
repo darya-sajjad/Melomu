@@ -6,13 +6,13 @@ import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
-    Animated,
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   },
   listPadding: {
     paddingHorizontal: 16,
-    paddingBottom: 100,
+    paddingBottom: 50,
   },
   emptyText: {
     textAlign: "center",
