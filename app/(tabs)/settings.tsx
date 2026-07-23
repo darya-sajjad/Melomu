@@ -290,7 +290,7 @@ export default function SettingsScreen() {
       />
 
       {/* 6. ABOUT */}
-      <AboutSection appVersion="1.0.0" buildNumber="1" />
+      <AboutSection />
 
       {/* PROGRESS MODAL (Overlay during batch scan) */}
       <ImportProgressModal
