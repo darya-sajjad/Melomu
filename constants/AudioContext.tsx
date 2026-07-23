@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from "expo-av";
 import React, {
   createContext,
@@ -33,6 +34,11 @@ interface AudioContextType {
   queue: Song[];
   currentIndex: number;
   isFavorite: boolean;
+  // ✨ Added Playback Settings Props
+  gaplessPlayback: boolean;
+  crossfadeDuration: number;
+  setGaplessPlayback: (enabled: boolean) => Promise<void>;
+  setCrossfadeDuration: (seconds: number) => Promise<void>;
   playSong: (song: Song, queueList?: Song[]) => Promise<void>;
   pauseSong: () => Promise<void>;
   resumeSong: () => Promise<void>;
@@ -63,12 +69,18 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const [shuffle, setShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>("off");
 
-  // State mirror for reactivity in UI components
+  const [gaplessPlayback, setGaplessState] = useState(false);
+  const [crossfadeDuration, setCrossfadeState] = useState(0);
+
   const [queueState, setQueueState] = useState<Song[]>([]);
   const [currentIndexState, setCurrentIndexState] = useState<number>(-1);
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
 
   const soundRef = useRef<Audio.Sound | null>(null);
+  const nextSoundRef = useRef<Audio.Sound | null>(null);
+  const isPreloadingRef = useRef<boolean>(false);
+  const preloadedIndexRef = useRef<number>(-1);
+
   const originalQueueRef = useRef<Song[]>([]);
   const queueRef = useRef<Song[]>([]);
   const indexRef = useRef<number>(-1);
@@ -92,6 +104,87 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     repeatModeRef.current = repeatMode;
   }, [repeatMode]);
 
+  // Load saved gapless and crossfade settings from AsyncStorage
+  useEffect(() => {
+    const loadPlaybackSettings = async () => {
+      try {
+        const savedGapless = await AsyncStorage.getItem("setting-gapless");
+        if (savedGapless !== null) {
+          const setGaplessPlayback = async (enabled: boolean) => {
+            setGaplessState(enabled);
+            if (!enabled && nextSoundRef.current) {
+              nextSoundRef.current.unloadAsync().catch(() => {});
+              nextSoundRef.current = null;
+              preloadedIndexRef.current = -1;
+            }
+            await AsyncStorage.setItem(
+              "setting-gapless",
+              JSON.stringify(enabled),
+            );
+          };
+        }
+
+        const savedCrossfade = await AsyncStorage.getItem("setting-crossfade");
+        if (savedCrossfade !== null) {
+          setCrossfadeState(Number(savedCrossfade));
+        }
+      } catch (err) {
+        console.error("Failed to load playback settings:", err);
+      }
+    };
+    loadPlaybackSettings();
+  }, []);
+
+  const setGaplessPlayback = async (enabled: boolean) => {
+    setGaplessState(enabled);
+    await AsyncStorage.setItem("setting-gapless", JSON.stringify(enabled));
+  };
+
+  const preloadNextTrack = async () => {
+    const list = queueRef.current;
+    if (!list.length || isPreloadingRef.current) return;
+
+    const nextIndex = indexRef.current + 1;
+    // Don't preload if out of bounds (unless repeat all is enabled)
+    if (nextIndex >= list.length && repeatModeRef.current !== "all") return;
+
+    const targetIndex = nextIndex >= list.length ? 0 : nextIndex;
+
+    // Skip if already preloaded
+    if (preloadedIndexRef.current === targetIndex && nextSoundRef.current)
+      return;
+
+    try {
+      isPreloadingRef.current = true;
+
+      // Clean up old preloaded instance if any
+      if (nextSoundRef.current) {
+        await nextSoundRef.current.unloadAsync();
+        nextSoundRef.current = null;
+      }
+
+      const nextSong = list[targetIndex];
+
+      // Create new sound instance in memory without starting playback
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: nextSong.file_path },
+        { shouldPlay: false, volume: 1.0 },
+      );
+
+      nextSoundRef.current = sound;
+      preloadedIndexRef.current = targetIndex;
+    } catch (err) {
+      console.warn("⚠️ Gapless Preload Failed:", err);
+    } finally {
+      isPreloadingRef.current = false;
+    }
+  };
+
+  const setCrossfadeDuration = async (seconds: number) => {
+    setCrossfadeState(seconds);
+    await AsyncStorage.setItem("setting-crossfade", seconds.toString());
+  };
+
   // Synchronize isFavorite whenever currentSong changes
   useEffect(() => {
     if (currentSong) {
@@ -109,9 +202,9 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-      }
+      if (soundRef.current) soundRef.current.unloadAsync().catch(() => {});
+      if (nextSoundRef.current)
+        nextSoundRef.current.unloadAsync().catch(() => {});
     };
   }, []);
 
@@ -149,7 +242,35 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Location: constants/AudioContext.tsx inside loadAndPlayIndex:
+  const fadeVolume = async (
+    sound: Audio.Sound,
+    fromVolume: number,
+    toVolume: number,
+    durationSeconds: number,
+  ) => {
+    if (durationSeconds <= 0) {
+      await sound.setVolumeAsync(toVolume);
+      return;
+    }
+
+    const steps = 10;
+    const stepTime = (durationSeconds * 1000) / steps;
+    const volumeStep = (toVolume - fromVolume) / steps;
+
+    for (let i = 0; i <= steps; i++) {
+      const targetVolume = Math.min(
+        Math.max(fromVolume + volumeStep * i, 0),
+        1,
+      );
+      try {
+        await sound.setVolumeAsync(targetVolume);
+      } catch (e) {
+        // Ignore if sound was unmounted during fade
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, stepTime));
+    }
+  };
 
   const loadAndPlayIndex = async (index: number) => {
     const list = queueRef.current;
@@ -159,44 +280,73 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     updateQueueState(queueRef.current, index);
 
     try {
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
+      const oldSound = soundRef.current;
+      let soundToPlay: Audio.Sound;
+      let usedPreload = false;
+
+      // 1. Start the NEXT track first — this is the whole point of preloading.
+      if (
+        gaplessPlayback &&
+        preloadedIndexRef.current === index &&
+        nextSoundRef.current
+      ) {
+        soundToPlay = nextSoundRef.current;
+        nextSoundRef.current = null;
+        preloadedIndexRef.current = -1;
+        usedPreload = true;
+        await soundToPlay.playAsync();
+      } else {
+        // Discard a stale (wrong-index) preload if one exists
+        if (nextSoundRef.current) {
+          nextSoundRef.current.unloadAsync().catch(() => {});
+          nextSoundRef.current = null;
+          preloadedIndexRef.current = -1;
+        }
+        const initialVolume = crossfadeDuration > 0 ? 0.1 : 1.0;
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: song.file_path },
+          { shouldPlay: true, volume: initialVolume },
+        );
+        soundToPlay = sound;
       }
 
-      setIsPlaying(false);
+      soundRef.current = soundToPlay;
+      setIsPlaying(true);
       setCurrentSong(song);
       setPosition(0);
 
-      await loadOfflineCachedLyrics(song.id);
-
-      const { sound, status } = await Audio.Sound.createAsync(
-        { uri: song.file_path },
-        { shouldPlay: true },
-      );
-
-      soundRef.current = sound;
-      setIsPlaying(true);
-
-      // Get exact millisecond duration from loaded status
-      let exactDurationMillis = song.duration;
-      if (status.isLoaded && status.durationMillis) {
-        exactDurationMillis = status.durationMillis;
-        setDuration(status.durationMillis);
+      // 2. NOW clean up the old sound, without blocking playback of the new one.
+      if (oldSound) {
+        if (crossfadeDuration > 0 && isPlaying) {
+          fadeVolume(oldSound, 1.0, 0.0, crossfadeDuration).then(() => {
+            oldSound.unloadAsync().catch(() => {});
+          });
+        } else {
+          oldSound.unloadAsync().catch(() => {});
+        }
       }
 
-      // ✨ Update DB with REAL duration and play count automatically
-      const db = await dbAsync;
-      await db.runAsync(
-        "UPDATE songs SET play_count = play_count + 1, last_played = ?, duration = ? WHERE id = ?",
-        [Date.now(), exactDurationMillis, song.id],
-      );
+      // Only fade the new track in if we're not gapless-preloaded at full volume already
+      if (crossfadeDuration > 0 && !usedPreload) {
+        fadeVolume(soundToPlay, 0.1, 1.0, crossfadeDuration);
+      }
 
-      sound.setOnPlaybackStatusUpdate((status) => {
+      await loadOfflineCachedLyrics(song.id);
+
+      soundToPlay.setOnPlaybackStatusUpdate((status) => {
         if (!status.isLoaded) return;
 
         setPosition(status.positionMillis);
         if (status.durationMillis) setDuration(status.durationMillis);
+
+        if (
+          gaplessPlayback &&
+          repeatModeRef.current !== "one" &&
+          status.durationMillis &&
+          status.positionMillis / status.durationMillis > 0.85
+        ) {
+          preloadNextTrack();
+        }
 
         if (status.didJustFinish) {
           if (repeatModeRef.current === "one") {
@@ -470,6 +620,10 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         queue: queueState,
         currentIndex: currentIndexState,
         isFavorite,
+        gaplessPlayback,
+        crossfadeDuration,
+        setGaplessPlayback,
+        setCrossfadeDuration,
         playSong,
         pauseSong,
         resumeSong,
