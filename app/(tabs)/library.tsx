@@ -1,9 +1,9 @@
-import AlbumsTab from "@/components/AlbumsTab";
-import ArtistsTab from "@/components/ArtistsTab";
-import SongsTab, { Song } from "@/components/SongsTab";
+import AlbumsTab from "@/components/library/AlbumsTab";
+import ArtistsTab from "@/components/library/ArtistsTab";
+import { SearchDock } from "@/components/library/LibraryTopSection";
+import SongsTab, { Song } from "@/components/library/SongsTab";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
-import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useState } from "react";
 import {
@@ -11,12 +11,17 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 
 type CategoryTab = "songs" | "albums" | "artists";
+
+const CATEGORY_TABS: { key: CategoryTab; label: string }[] = [
+  { key: "songs", label: "Songs" },
+  { key: "albums", label: "Albums" },
+  { key: "artists", label: "Artists" },
+];
 
 export default function LibraryScreen() {
   const { colors } = useTheme();
@@ -57,26 +62,10 @@ export default function LibraryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: "#1E1E1E" }]}>
-      {/* 1. Top Section: Search Bar floating over root background */}
-      <View style={styles.topSection}>
-        <View
-          style={[
-            styles.searchBarContainer,
-            { backgroundColor: "#FFFFFF", borderColor: "transparent" },
-          ]}
-        >
-          <TextInput
-            placeholder="Search..."
-            placeholderTextColor="#8E8E93"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={styles.searchInput}
-          />
-          <Ionicons name="search" size={20} color="#000000" />
-        </View>
-      </View>
+      {/* 1. Top Section: Search Dock */}
+      <SearchDock searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
 
-      {/* 2. Curved Main Sheet Container containing Tabs + Lists */}
+      {/* 2. Curved Main Content Sheet */}
       <View
         style={[
           styles.curvedSheet,
@@ -86,77 +75,41 @@ export default function LibraryScreen() {
           },
         ]}
       >
-        {/* Category Filter Pills Row */}
+        {/* Category Pills Row */}
         <View style={styles.tabBar}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[
-              styles.tabPill,
-              activeTab === "songs"
-                ? { backgroundColor: "#B2EBF2" } // Active Pill Color matching Figma
-                : { backgroundColor: colors.background },
-            ]}
-            onPress={() => setActiveTab("songs")}
-          >
-            <Text
-              style={[
-                styles.tabPillText,
-                {
-                  color: activeTab === "songs" ? "#000000" : colors.text,
-                },
-              ]}
-            >
-              Songs
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[
-              styles.tabPill,
-              activeTab === "albums"
-                ? { backgroundColor: "#B2EBF2" }
-                : { backgroundColor: colors.background },
-            ]}
-            onPress={() => setActiveTab("albums")}
-          >
-            <Text
-              style={[
-                styles.tabPillText,
-                {
-                  color: activeTab === "albums" ? "#000000" : colors.text,
-                },
-              ]}
-            >
-              Albums
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[
-              styles.tabPill,
-              activeTab === "artists"
-                ? { backgroundColor: "#B2EBF2" }
-                : { backgroundColor: colors.background },
-            ]}
-            onPress={() => setActiveTab("artists")}
-          >
-            <Text
-              style={[
-                styles.tabPillText,
-                {
-                  color: activeTab === "artists" ? "#000000" : colors.text,
-                },
-              ]}
-            >
-              Artists
-            </Text>
-          </TouchableOpacity>
+          {CATEGORY_TABS.map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                activeOpacity={0.8}
+                style={[
+                  styles.tabPill,
+                  {
+                    backgroundColor: isActive
+                      ? colors.primary || "#B2EBF2"
+                      : colors.background,
+                  },
+                ]}
+                onPress={() => setActiveTab(tab.key)}
+              >
+                <Text
+                  style={[
+                    styles.tabPillText,
+                    {
+                      color: isActive ? "#000000" : colors.text,
+                    },
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {/* Dynamic Tab Content Views */}
-        <View style={{ flex: 1 }}>
+        {/* Dynamic Tab Content */}
+        <View style={styles.tabContent}>
           {activeTab === "songs" && (
             <SongsTab
               songs={songs}
@@ -188,22 +141,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  topSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  searchBarContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 18,
-    paddingVertical: Platform.OS === "ios" ? 12 : 8,
-    borderRadius: 24,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: "#000000",
-  },
   curvedSheet: {
     flex: 1,
     borderTopLeftRadius: 32,
@@ -225,10 +162,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     alignItems: "center",
-    marginHorizontal: 12,
+    marginHorizontal: 4,
   },
   tabPillText: {
     fontSize: 14,
     fontWeight: "700",
+  },
+  tabContent: {
+    flex: 1,
   },
 });
