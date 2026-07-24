@@ -1,5 +1,5 @@
 import placeholderIcon from "@/assets/icon.png";
-import { Song } from "@/components/SongsTab";
+import { Song } from "@/components/library/SongsTab";
 import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";

@@ -1,5 +1,5 @@
 import placeholderIcon from "@/assets/icon.png";
-import { Song } from "@/components/SongsTab"; // ✨ Import the shared Song type
+import { Song } from "@/components/library/SongsTab"; // ✨ Import the shared Song type
 import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
