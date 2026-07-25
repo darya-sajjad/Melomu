@@ -1,7 +1,9 @@
 import placeholderIcon from "@/assets/icon.png";
+import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
+import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Dimensions,
   FlatList,
@@ -21,29 +23,77 @@ interface AlbumsTabProps {
 interface AlbumGroup {
   name: string;
   artist: string;
-  artwork?: string | null;
   tracks: Song[];
 }
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-// Padding (16*2 = 32) + Gap between cards (16) = 48
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 
 export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
   const { colors } = useTheme();
   const router = useRouter();
+  const isFocused = useIsFocused();
 
-  // Dynamically group songs by Album name with explicit typing
+  // Map of album name -> album_artworks path from SQLite
+  const [albumArtworksMap, setAlbumArtworksMap] = useState<
+    Record<string, string>
+  >({});
+
+  // Fetch all custom album covers directly from SQLite whenever screen is focused
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAlbumArtworks() {
+      try {
+        const db = await dbAsync;
+        // Ensure table exists
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS album_artworks (
+            album TEXT PRIMARY KEY,
+            artwork_path TEXT
+          );
+        `);
+
+        const rows = await db.getAllAsync<{
+          album: string;
+          artwork_path: string;
+        }>("SELECT album, artwork_path FROM album_artworks");
+
+        if (!isMounted) return;
+
+        const map: Record<string, string> = {};
+        for (const row of rows) {
+          if (row.album && row.artwork_path) {
+            map[row.album] = row.artwork_path;
+          }
+        }
+        setAlbumArtworksMap(map);
+      } catch (error) {
+        console.error("Failed to fetch album_artworks in AlbumsTab:", error);
+      }
+    }
+
+    if (isFocused) {
+      loadAlbumArtworks();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isFocused]);
+
+  // Group songs into albums
   const albumsMap = songs.reduce<Record<string, AlbumGroup>>((acc, song) => {
     const albumKey = song.album || "Unknown Album";
+
     if (!acc[albumKey]) {
       acc[albumKey] = {
         name: albumKey,
         artist: song.artist || "Unknown Artist",
-        artwork: song.custom_artwork_path,
         tracks: [],
       };
     }
+
     acc[albumKey].tracks.push(song);
     return acc;
   }, {});
@@ -68,11 +118,16 @@ export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
           </Text>
         }
         renderItem={({ item }) => {
-          const firstTrackWithCover = item.tracks.find(
-            (t: Song) => t.custom_artwork_path,
+          // Priority Order:
+          // 1. Direct match in album_artworks table
+          // 2. Fallback to song's custom_artwork_path
+          const firstTrackWithArt = item.tracks.find(
+            (t) => t.custom_artwork_path && t.custom_artwork_path.trim() !== "",
           );
+
           const coverUri =
-            firstTrackWithCover?.custom_artwork_path || item.artwork;
+            albumArtworksMap[item.name] ||
+            firstTrackWithArt?.custom_artwork_path;
 
           return (
             <TouchableOpacity
@@ -86,7 +141,11 @@ export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
               }
             >
               <Image
-                source={coverUri ? { uri: coverUri } : placeholderIcon}
+                source={
+                  coverUri
+                    ? { uri: `${coverUri}?t=${Date.now()}` }
+                    : placeholderIcon
+                }
                 style={[
                   styles.albumArt,
                   {
@@ -129,9 +188,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 20,
   },
-  albumCard: {
-    // Width applied dynamically inline via CARD_WIDTH
-  },
+  albumCard: {},
   albumArt: {
     borderRadius: 16,
     marginBottom: 8,
