@@ -42,9 +42,11 @@ export default function MiniPlayer() {
 
   // Base resting bottom offset when TabBar is visible
   const baseBottom = TAB_BAR_HEIGHT + (Platform.OS === "ios" ? 10 : 8);
+
+  // Map tabBarTranslateY to push the MiniPlayer entirely off-screen (150px down) when selection mode is active
   const translateY = tabBarTranslateY.interpolate({
     inputRange: [0, TAB_BAR_HEIGHT],
-    outputRange: [0, TAB_BAR_HEIGHT - 10],
+    outputRange: [0, TAB_BAR_HEIGHT + 150],
     extrapolate: "clamp",
   });
 
