@@ -62,7 +62,7 @@ export default function PlayerHeaderArtwork({
       duration: 280,
       easing: Easing.out(Easing.cubic),
     });
-  }, [currentTrack?.id]);
+  }, [translateX, lastDirection]);
 
   const panGesture = Gesture.Pan()
     .activeOffsetX([-10, 10])

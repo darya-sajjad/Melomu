@@ -184,7 +184,11 @@ export default function AlbumDetailScreen() {
       <View style={styles.albumHeader}>
         <View style={styles.coverContainer}>
           <Image
-            source={customArtwork ? { uri: customArtwork } : placeholderIcon}
+            source={
+              customArtwork
+                ? { uri: `${customArtwork}?t=${Date.now()}` }
+                : placeholderIcon
+            }
             style={styles.squareCoverLarge}
           />
           <TouchableOpacity
@@ -237,7 +241,11 @@ export default function AlbumDetailScreen() {
                 {index + 1}
               </Text>
               <Image
-                source={trackArtwork ? { uri: trackArtwork } : placeholderIcon}
+                source={
+                  trackArtwork
+                    ? { uri: `${trackArtwork}?t=${Date.now()}` }
+                    : placeholderIcon
+                }
                 style={styles.trackThumb}
               />
               <View style={styles.trackMeta}>
