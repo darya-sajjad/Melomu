@@ -18,6 +18,13 @@ interface AlbumsTabProps {
   searchQuery: string;
 }
 
+interface AlbumGroup {
+  name: string;
+  artist: string;
+  artwork?: string | null;
+  tracks: Song[];
+}
+
 const SCREEN_WIDTH = Dimensions.get("window").width;
 // Padding (16*2 = 32) + Gap between cards (16) = 48
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
@@ -26,36 +33,30 @@ export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
   const { colors } = useTheme();
   const router = useRouter();
 
-  // Group songs dynamically by Album name
-  const albumsMap = songs.reduce(
-    (acc, song) => {
-      const albumKey = song.album || "Unknown Album";
-      if (!acc[albumKey]) {
-        acc[albumKey] = {
-          name: albumKey,
-          artist: song.artist || "Unknown Artist",
-          artwork: song.custom_artwork_path,
-          tracks: [],
-        };
-      }
-      acc[albumKey].tracks.push(song);
-      return acc;
-    },
-    {} as Record<
-      string,
-      { name: string; artist: string; artwork?: string | null; tracks: Song[] }
-    >,
-  );
+  // Dynamically group songs by Album name with explicit typing
+  const albumsMap = songs.reduce<Record<string, AlbumGroup>>((acc, song) => {
+    const albumKey = song.album || "Unknown Album";
+    if (!acc[albumKey]) {
+      acc[albumKey] = {
+        name: albumKey,
+        artist: song.artist || "Unknown Artist",
+        artwork: song.custom_artwork_path,
+        tracks: [],
+      };
+    }
+    acc[albumKey].tracks.push(song);
+    return acc;
+  }, {});
 
-  const albumList = Object.values(albumsMap).filter(
-    (a) =>
+  const albumList: AlbumGroup[] = Object.values(albumsMap).filter(
+    (a: AlbumGroup) =>
       a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       a.artist.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <FlatList<AlbumGroup>
         data={albumList}
         keyExtractor={(item) => item.name}
         numColumns={2}
@@ -68,7 +69,7 @@ export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
         }
         renderItem={({ item }) => {
           const firstTrackWithCover = item.tracks.find(
-            (t) => t.custom_artwork_path,
+            (t: Song) => t.custom_artwork_path,
           );
           const coverUri =
             firstTrackWithCover?.custom_artwork_path || item.artwork;
@@ -129,7 +130,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   albumCard: {
-    // Explicit width applied dynamically inline via CARD_WIDTH
+    // Width applied dynamically inline via CARD_WIDTH
   },
   albumArt: {
     borderRadius: 16,

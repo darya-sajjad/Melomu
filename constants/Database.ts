@@ -27,6 +27,11 @@ export async function initializeDatabase() {
       is_favorite INTEGER DEFAULT 0
     );
 
+    CREATE TABLE IF NOT EXISTS album_artworks (
+      album TEXT PRIMARY KEY NOT NULL,
+      artwork_path TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS lyrics_cache (
       song_id TEXT PRIMARY KEY NOT NULL,
       lyrics_text TEXT,               

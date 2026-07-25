@@ -4,13 +4,13 @@ import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    FlatList,
-    Image,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  FlatList,
+  Image,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 interface Song {
@@ -22,77 +22,130 @@ interface PlaylistRow {
   id: string;
   name: string;
   artwork_path: string | null;
-  isAdded: number;
+  isAdded: boolean;
 }
 
 interface AddToPlaylistModalProps {
   isVisible: boolean;
-  song: Song | null;
+  song?: Song | null;
+  songs?: Song[];
   onClose: () => void;
 }
 
 export default function AddToPlaylistModal({
   isVisible,
   song,
+  songs,
   onClose,
 }: AddToPlaylistModalProps) {
   const { colors } = useTheme();
   const [playlists, setPlaylists] = useState<PlaylistRow[]>([]);
 
-  const loadPlaylistsForSong = useCallback(async () => {
-    if (!song) return;
+  // Resolve target songs array (bulk list or single item)
+  const targetSongs = songs && songs.length > 0 ? songs : song ? [song] : [];
+
+  const loadPlaylistsForSongs = useCallback(async () => {
+    if (targetSongs.length === 0) return;
     try {
       const db = await dbAsync;
-      const results = await db.getAllAsync<PlaylistRow>(
-        `SELECT p.id, p.name, p.artwork_path,
-                CASE WHEN ps.song_id IS NOT NULL THEN 1 ELSE 0 END as isAdded
-         FROM playlists p
-         LEFT JOIN playlist_songs ps ON ps.playlist_id = p.id AND ps.song_id = ?
-         ORDER BY p.created_at DESC`,
-        [song.id],
+      const allPlaylists = await db.getAllAsync<{
+        id: string;
+        name: string;
+        artwork_path: string | null;
+      }>(
+        `SELECT id, name, artwork_path FROM playlists ORDER BY created_at DESC`,
       );
-      setPlaylists(results);
+
+      const songIds = targetSongs.map((s) => s.id);
+      const placeholders = songIds.map(() => "?").join(",");
+
+      // Query which playlists contain ALL targeted songs
+      const rows = await db.getAllAsync<{ playlist_id: string; count: number }>(
+        `SELECT playlist_id, COUNT(DISTINCT song_id) as count 
+         FROM playlist_songs 
+         WHERE song_id IN (${placeholders}) 
+         GROUP BY playlist_id`,
+        songIds,
+      );
+
+      const countMap = new Map(rows.map((r) => [r.playlist_id, r.count]));
+
+      const mappedPlaylists: PlaylistRow[] = allPlaylists.map((p) => {
+        const matchingCount = countMap.get(p.id) || 0;
+        return {
+          ...p,
+          // Marked as added if all targeted songs exist in this playlist
+          isAdded: matchingCount >= targetSongs.length,
+        };
+      });
+
+      setPlaylists(mappedPlaylists);
     } catch (error) {
-      console.error("Failed to load playlists for song:", error);
+      console.error("Failed to load playlists for songs:", error);
     }
-  }, [song]);
+  }, [targetSongs]);
 
   useEffect(() => {
-    if (isVisible && song) {
-      loadPlaylistsForSong();
+    if (isVisible && targetSongs.length > 0) {
+      loadPlaylistsForSongs();
     }
-  }, [isVisible, song, loadPlaylistsForSong]);
+  }, [isVisible, targetSongs.length, loadPlaylistsForSongs]);
 
-  const toggleSongInPlaylist = async (
+  const toggleSongsInPlaylist = async (
     playlistId: string,
     isCurrentlyAdded: boolean,
   ) => {
-    if (!song) return;
+    if (targetSongs.length === 0) return;
     try {
       const db = await dbAsync;
 
-      if (isCurrentlyAdded) {
-        await db.runAsync(
-          "DELETE FROM playlist_songs WHERE playlist_id = ? AND song_id = ?",
-          [playlistId, song.id],
-        );
-      } else {
-        const countResult: any = await db.getFirstAsync(
-          "SELECT COUNT(*) as total FROM playlist_songs WHERE playlist_id = ?",
-          [playlistId],
-        );
-        const nextPosition = countResult?.total || 0;
-        await db.runAsync(
-          "INSERT INTO playlist_songs (playlist_id, song_id, position) VALUES (?, ?, ?)",
-          [playlistId, song.id, nextPosition],
-        );
-      }
+      await db.withTransactionAsync(async () => {
+        if (isCurrentlyAdded) {
+          // Remove targeted songs from playlist
+          for (const item of targetSongs) {
+            await db.runAsync(
+              "DELETE FROM playlist_songs WHERE playlist_id = ? AND song_id = ?",
+              [playlistId, item.id],
+            );
+          }
+        } else {
+          // Add missing songs into playlist
+          const countResult: any = await db.getFirstAsync(
+            "SELECT COUNT(*) as total FROM playlist_songs WHERE playlist_id = ?",
+            [playlistId],
+          );
+          let currentPos = countResult?.total || 0;
 
-      loadPlaylistsForSong();
+          for (const item of targetSongs) {
+            // Check if individual song is already in the playlist to avoid duplicate PK errors
+            const existing = await db.getFirstAsync(
+              "SELECT song_id FROM playlist_songs WHERE playlist_id = ? AND song_id = ?",
+              [playlistId, item.id],
+            );
+
+            if (!existing) {
+              await db.runAsync(
+                "INSERT INTO playlist_songs (playlist_id, song_id, position) VALUES (?, ?, ?)",
+                [playlistId, item.id, currentPos],
+              );
+              currentPos++;
+            }
+          }
+        }
+      });
+
+      loadPlaylistsForSongs();
     } catch (error) {
-      console.error("Failed to toggle song in playlist:", error);
+      console.error("Failed to toggle songs in playlist:", error);
     }
   };
+
+  const modalTitleText =
+    targetSongs.length > 1
+      ? `Add ${targetSongs.length} tracks to...`
+      : targetSongs[0]
+        ? `Add "${targetSongs[0].title}" to...`
+        : "Add to Playlist";
 
   return (
     <Modal visible={isVisible} animationType="slide" transparent>
@@ -107,7 +160,7 @@ export default function AddToPlaylistModal({
             style={[styles.modalTitle, { color: colors.text }]}
             numberOfLines={1}
           >
-            Add &quot;{song?.title}&quot; to...
+            {modalTitleText}
           </Text>
 
           <FlatList
@@ -124,7 +177,7 @@ export default function AddToPlaylistModal({
               <TouchableOpacity
                 activeOpacity={0.7}
                 style={styles.playlistRow}
-                onPress={() => toggleSongInPlaylist(item.id, !!item.isAdded)}
+                onPress={() => toggleSongsInPlaylist(item.id, item.isAdded)}
               >
                 <Image
                   source={
