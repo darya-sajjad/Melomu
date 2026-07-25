@@ -4,26 +4,26 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect } from "react";
 import {
-    Dimensions,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import {
-    Gesture,
-    GestureDetector,
-    GestureHandlerRootView,
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
 } from "react-native-gesture-handler";
 import Animated, {
-    Easing,
-    Extrapolation,
-    interpolate,
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
+  Easing,
+  Extrapolation,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from "react-native-reanimated";
 
 const { width } = Dimensions.get("window");

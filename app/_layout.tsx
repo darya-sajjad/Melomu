@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import MiniPlayer from "@/components/MiniPlayer";
 import { AudioProvider } from "@/constants/AudioContext";
 import { initializeDatabase, seedMockSongs } from "@/constants/Database";
 import { ThemeProvider, useTheme } from "@/constants/ThemeContext";
@@ -50,7 +49,6 @@ function AppContent() {
         />
       </Stack>
       <StatusBar style={context.theme === "dark" ? "light" : "dark"} />
-      <MiniPlayer />
     </>
   );
 }

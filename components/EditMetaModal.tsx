@@ -174,9 +174,36 @@ export default function EditMetaModal({
     try {
       const db = await dbAsync;
 
+      // Defensive — this table is normally created the first time someone
+      // visits AlbumDetailScreen, but a song can be filed into an album
+      // from here first (e.g. brand new install), so make sure it exists
+      // before querying it below.
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS album_artworks (
+          album TEXT PRIMARY KEY,
+          artwork_path TEXT
+        );
+      `);
+
+      // NEW (bug 2 fix): if this song has no artwork of its own and it's
+      // being filed into an album that already has cover art, inherit that
+      // cover now — written directly into custom_artwork_path — instead of
+      // only ever showing it via AlbumDetailScreen's display-time fallback,
+      // which is why it wasn't appearing in SongsTab/MiniPlayer/etc.
+      let finalArtworkPath = artworkPath;
+      if (!finalArtworkPath && targetAlbum) {
+        const albumArt = await db.getFirstAsync<{ artwork_path: string }>(
+          "SELECT artwork_path FROM album_artworks WHERE album = ?",
+          [targetAlbum],
+        );
+        if (albumArt?.artwork_path) {
+          finalArtworkPath = albumArt.artwork_path;
+        }
+      }
+
       await db.runAsync(
         "UPDATE songs SET title = ?, artist = ?, album = ?, custom_artwork_path = ? WHERE id = ?",
-        [targetTitle, targetArtist, targetAlbum, artworkPath, song.id],
+        [targetTitle, targetArtist, targetAlbum, finalArtworkPath, song.id],
       );
 
       console.log(`✏️ Saved metadata edits for: ${targetTitle}`);
