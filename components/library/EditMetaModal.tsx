@@ -111,6 +111,7 @@ export default function EditMetaModal({
   const [artist, setArtist] = useState("");
   const [album, setAlbum] = useState("");
   const [artworkPath, setArtworkPath] = useState<string | null>(null);
+  const [isArtworkManuallySet, setIsArtworkManuallySet] = useState(false);
 
   useEffect(() => {
     if (song) {
@@ -118,6 +119,7 @@ export default function EditMetaModal({
       setArtist(song.artist || "");
       setAlbum(song.album || "");
       setArtworkPath(song.custom_artwork_path || null);
+      setIsArtworkManuallySet(false);
     }
   }, [song]);
 
@@ -159,6 +161,7 @@ export default function EditMetaModal({
       });
 
       setArtworkPath(destPath);
+      setIsArtworkManuallySet(true);
     } catch (error) {
       console.error("❌ Failed to select custom album art photo:", error);
     }
@@ -185,11 +188,6 @@ export default function EditMetaModal({
         );
       `);
 
-      // NEW (bug 2 fix): if this song has no artwork of its own and it's
-      // being filed into an album that already has cover art, inherit that
-      // cover now — written directly into custom_artwork_path — instead of
-      // only ever showing it via AlbumDetailScreen's display-time fallback,
-      // which is why it wasn't appearing in SongsTab/MiniPlayer/etc.
       let finalArtworkPath = artworkPath;
       if (!finalArtworkPath && targetAlbum) {
         const albumArt = await db.getFirstAsync<{ artwork_path: string }>(
@@ -201,9 +199,18 @@ export default function EditMetaModal({
         }
       }
 
+      const artworkSource = isArtworkManuallySet ? "manual" : "album";
+
       await db.runAsync(
-        "UPDATE songs SET title = ?, artist = ?, album = ?, custom_artwork_path = ? WHERE id = ?",
-        [targetTitle, targetArtist, targetAlbum, finalArtworkPath, song.id],
+        "UPDATE songs SET title = ?, artist = ?, album = ?, custom_artwork_path = ?, artwork_source = ? WHERE id = ?",
+        [
+          targetTitle,
+          targetArtist,
+          targetAlbum,
+          finalArtworkPath,
+          artworkSource,
+          song.id,
+        ],
       );
 
       console.log(`✏️ Saved metadata edits for: ${targetTitle}`);

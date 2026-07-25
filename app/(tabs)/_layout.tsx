@@ -13,7 +13,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 function TabLayoutInner() {
   const context = useTheme();
-  const { tabBarTranslateY } = useSelectionMode();
+  const { isSelectionModeActive } = useSelectionMode();
 
   if (!context || !context.colors) {
     return null;
@@ -46,7 +46,10 @@ function TabLayoutInner() {
             left: 0,
             right: 0,
             // 2. Animate ONLY the tab bar here, not the whole Tabs wrapper
-            transform: [{ translateY: tabBarTranslateY }],
+            display: isSelectionModeActive ? "none" : "flex",
+            transform: [
+              { translateY: isSelectionModeActive ? TAB_BAR_HEIGHT : 0 },
+            ],
           },
           tabBarItemStyle: {
             justifyContent: "center",

@@ -35,7 +35,6 @@ export default function AlbumDetailScreen() {
     try {
       const db = await dbAsync;
 
-      // Ensure album artworks table exists
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS album_artworks (
           album TEXT PRIMARY KEY,
@@ -43,13 +42,11 @@ export default function AlbumDetailScreen() {
         );
       `);
 
-      // Fetch dynamic custom artwork from album_artworks
       const albumRow = await db.getFirstAsync<{ artwork_path: string }>(
         "SELECT artwork_path FROM album_artworks WHERE album = ?",
         [albumName],
       );
 
-      // Fetch all tracks assigned to this album
       const result = await db.getAllAsync<Song>(
         "SELECT * FROM songs WHERE album = ?",
         [albumName],
@@ -57,7 +54,6 @@ export default function AlbumDetailScreen() {
 
       setSongs(result);
 
-      // Fallback order: custom album artwork -> first track artwork -> null
       const firstTrackArtwork = result.find(
         (s) => s.custom_artwork_path,
       )?.custom_artwork_path;
@@ -109,7 +105,6 @@ export default function AlbumDetailScreen() {
 
       const db = await dbAsync;
 
-      // Save exclusively to album_artworks table
       await db.runAsync(
         `INSERT INTO album_artworks (album, artwork_path)
          VALUES (?, ?)
@@ -117,11 +112,10 @@ export default function AlbumDetailScreen() {
         [albumName, destPath],
       );
 
-      // Also update any tracks in this album that don't have their own custom artwork
       await db.runAsync(
         `UPDATE songs 
-         SET custom_artwork_path = ? 
-         WHERE album = ? AND (custom_artwork_path IS NULL OR custom_artwork_path = '')`,
+         SET custom_artwork_path = ?, artwork_source = 'album'
+         WHERE album = ? AND (artwork_source IS NULL OR artwork_source = 'album')`,
         [destPath, albumName],
       );
 
@@ -152,6 +146,50 @@ export default function AlbumDetailScreen() {
     const secs = totalSeconds % 60;
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
+
+  const renderTrack = useCallback(
+    ({ item, index }: { item: Song; index: number }) => {
+      const trackArtwork = item.custom_artwork_path || customArtwork;
+
+      return (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={[
+            styles.trackRow,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+          onPress={() => playSong(item, songs)}
+        >
+          <Text style={[styles.trackIndex, { color: colors.textSecondary }]}>
+            {index + 1}
+          </Text>
+          <Image
+            source={trackArtwork ? { uri: trackArtwork } : placeholderIcon}
+            style={styles.trackThumb}
+            resizeMode="cover"
+          />
+          <View style={styles.trackMeta}>
+            <Text
+              style={[styles.trackTitle, { color: colors.text }]}
+              numberOfLines={1}
+            >
+              {item.title}
+            </Text>
+            <Text
+              style={[styles.artistSubtext, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {item.artist}
+            </Text>
+          </View>
+          <Text style={[styles.trackDuration, { color: colors.textSecondary }]}>
+            {formatDuration(item.duration)}
+          </Text>
+        </TouchableOpacity>
+      );
+    },
+    [colors, customArtwork, playSong, songs],
+  );
 
   if (isLoading) {
     return (
@@ -184,17 +222,20 @@ export default function AlbumDetailScreen() {
       <View style={styles.albumHeader}>
         <View style={styles.coverContainer}>
           <Image
-            source={
-              customArtwork
-                ? { uri: `${customArtwork}?t=${Date.now()}` }
-                : placeholderIcon
-            }
+            source={customArtwork ? { uri: customArtwork } : placeholderIcon}
             style={styles.squareCoverLarge}
+            resizeMode="cover"
           />
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={promptChangePhoto}
-            style={[styles.editBadge, { backgroundColor: colors.primary }]}
+            style={[
+              styles.editBadge,
+              {
+                backgroundColor: colors.primary,
+                borderColor: colors.background,
+              },
+            ]}
           >
             <Ionicons name="pencil" size={16} color="#FFFFFF" />
           </TouchableOpacity>
@@ -223,56 +264,7 @@ export default function AlbumDetailScreen() {
         data={songs}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listPadding}
-        renderItem={({ item, index }) => {
-          const trackArtwork = item.custom_artwork_path || customArtwork;
-
-          return (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.trackRow,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
-              onPress={() => playSong(item, songs)}
-            >
-              <Text
-                style={[styles.trackIndex, { color: colors.textSecondary }]}
-              >
-                {index + 1}
-              </Text>
-              <Image
-                source={
-                  trackArtwork
-                    ? { uri: `${trackArtwork}?t=${Date.now()}` }
-                    : placeholderIcon
-                }
-                style={styles.trackThumb}
-              />
-              <View style={styles.trackMeta}>
-                <Text
-                  style={[styles.trackTitle, { color: colors.text }]}
-                  numberOfLines={1}
-                >
-                  {item.title}
-                </Text>
-                <Text
-                  style={[
-                    styles.artistSubtext,
-                    { color: colors.textSecondary },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {item.artist}
-                </Text>
-              </View>
-              <Text
-                style={[styles.trackDuration, { color: colors.textSecondary }]}
-              >
-                {formatDuration(item.duration)}
-              </Text>
-            </TouchableOpacity>
-          );
-        }}
+        renderItem={renderTrack}
       />
     </View>
   );
@@ -321,7 +313,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#000000",
   },
   albumTitle: {
     fontSize: 22,

@@ -23,20 +23,20 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
   withTiming,
 } from "react-native-reanimated";
 
 const { width } = Dimensions.get("window");
-const SWIPE_THRESHOLD = width * 0.25;
-const VELOCITY_THRESHOLD = 800; // px/s — lets a fast flick trigger a swipe even under the distance threshold
-
-export interface CarouselTrack {
-  id?: string | number;
-  artwork?: string | null;
-}
+const ARTWORK_SIZE = width * 0.78;
+const SWIPE_THRESHOLD = width * 0.18;
+const VELOCITY_THRESHOLD = 600;
 
 interface Props {
-  currentTrack: CarouselTrack;
+  currentTrack: {
+    id?: string | number;
+    artwork?: string | null;
+  };
   onNextTrack: () => void;
   onPreviousTrack: () => void;
 }
@@ -50,107 +50,89 @@ export default function PlayerHeaderArtwork({
   const { colors } = useTheme();
 
   const translateX = useSharedValue(0);
-  const isDragging = useSharedValue(0); // 0/1, drives the subtle "lift" scale
-  const lastDirection = useSharedValue(0); // -1 or 1, used to animate the next track in from the correct side
+  const isDragging = useSharedValue(0);
+  const lastSwipeDirection = useSharedValue(0); // -1 = left (next), 1 = right (previous)
 
-  // Entrance animation whenever the track changes — slides + fades in from
-  // the side it was swiped toward, instead of hard-cutting.
+  // Entrance animation: when track changes, slide in from the opposite side of the swipe
   useEffect(() => {
-    const dir = lastDirection.value;
-    translateX.value = dir * width * 0.45;
-    translateX.value = withTiming(0, {
-      duration: 280,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [translateX, lastDirection]);
+    if (lastSwipeDirection.value !== 0) {
+      // Enter from the opposite side of where we exited
+      translateX.value = -lastSwipeDirection.value * width * 0.5;
+      translateX.value = withSpring(0, {
+        damping: 15,
+        stiffness: 120,
+        mass: 0.8,
+      });
+      lastSwipeDirection.value = 0;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrack?.id]);
 
   const panGesture = Gesture.Pan()
     .activeOffsetX([-10, 10])
-    .failOffsetY([-15, 15])
+    .failOffsetY([-20, 20])
     .onBegin(() => {
-      isDragging.value = withTiming(1, { duration: 120 });
+      isDragging.value = withTiming(1, { duration: 100 });
     })
     .onUpdate((event) => {
       translateX.value = event.translationX;
     })
     .onEnd((event) => {
-      isDragging.value = withTiming(0, { duration: 120 });
+      isDragging.value = withTiming(0, { duration: 100 });
 
-      const isFastFlick = Math.abs(event.velocityX) > VELOCITY_THRESHOLD;
-      const passedThreshold = Math.abs(event.translationX) > SWIPE_THRESHOLD;
-      const swipedLeft = event.translationX < 0 || event.velocityX < 0;
+      const swipedLeft =
+        event.translationX < -SWIPE_THRESHOLD ||
+        event.velocityX < -VELOCITY_THRESHOLD;
+      const swipedRight =
+        event.translationX > SWIPE_THRESHOLD ||
+        event.velocityX > VELOCITY_THRESHOLD;
 
-      if (passedThreshold || isFastFlick) {
-        const direction = swipedLeft ? -1 : 1;
-        lastDirection.value = direction;
-
-        // Continue in the flick direction with a velocity-aware duration —
-        // fast flicks exit quicker, slow deliberate drags exit a bit slower.
-        const exitDuration = Math.max(
-          140,
-          220 - Math.abs(event.velocityX) / 20,
-        );
-
+      if (swipedLeft) {
+        lastSwipeDirection.value = -1;
         translateX.value = withTiming(
-          direction * width * 1.15,
-          { duration: exitDuration, easing: Easing.out(Easing.cubic) },
+          -width,
+          { duration: 220, easing: Easing.out(Easing.cubic) },
           () => {
-            if (direction === -1) {
-              runOnJS(onNextTrack)();
-            } else {
-              runOnJS(onPreviousTrack)();
-            }
+            runOnJS(onNextTrack)();
+          },
+        );
+      } else if (swipedRight) {
+        lastSwipeDirection.value = 1;
+        translateX.value = withTiming(
+          width,
+          { duration: 220, easing: Easing.out(Easing.cubic) },
+          () => {
+            runOnJS(onPreviousTrack)();
           },
         );
       } else {
-        // Didn't clear the threshold — settle back decisively, no overshoot.
-        // (A spring here is what was causing the "bounce" feeling.)
-        translateX.value = withTiming(0, {
-          duration: 240,
-          easing: Easing.out(Easing.cubic),
+        // Snap back to center
+        translateX.value = withSpring(0, {
+          damping: 20,
+          stiffness: 200,
         });
       }
     });
 
-  // Decorative cards peeking out from behind the main artwork — pure staging,
-  // no real neighbor-track data required. They drift slightly slower than the
-  // drag (parallax) so the whole thing reads as a stack/carousel with depth.
-  const leftStackStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value * 0.15 }, { rotate: "-6deg" }],
-  }));
-
-  const rightStackStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value * 0.15 }, { rotate: "6deg" }],
-  }));
-
   const animatedStyle = useAnimatedStyle(() => {
     const dragDistance = Math.abs(translateX.value);
 
-    // Tighter interpolation range (half the swipe threshold to just past it)
-    // so the scale/opacity/rotation are actually visible while dragging,
-    // instead of only showing up near the edge of the screen.
+    // Scale down slightly as you drag away from center
     const dragScale = interpolate(
       dragDistance,
-      [0, SWIPE_THRESHOLD * 1.5],
-      [1, 0.9],
+      [0, width * 0.5],
+      [1, 0.92],
       Extrapolation.CLAMP,
     );
 
-    // Slight "lift" as soon as you touch it, before any real drag scaling
-    // dominates — makes it feel picked up rather than just squished.
-    const liftScale = interpolate(isDragging.value, [0, 1], [1, 1.03]);
+    // Subtle "lift" when finger first touches
+    const liftScale = interpolate(isDragging.value, [0, 1], [1, 1.02]);
 
+    // Fade out as it approaches screen edge
     const opacity = interpolate(
       dragDistance,
-      [0, SWIPE_THRESHOLD * 1.8],
-      [1, 0.55],
-      Extrapolation.CLAMP,
-    );
-
-    const rotate = interpolate(
-      translateX.value,
-      [-width, 0, width],
-      [-10, 0, 10],
+      [0, width * 0.6],
+      [1, 0.4],
       Extrapolation.CLAMP,
     );
 
@@ -159,7 +141,6 @@ export default function PlayerHeaderArtwork({
       transform: [
         { translateX: translateX.value },
         { scale: dragScale * liftScale },
-        { rotate: `${rotate}deg` },
       ],
     };
   });
@@ -183,27 +164,10 @@ export default function PlayerHeaderArtwork({
         <View style={styles.headerIconPlaceholder} />
       </View>
 
-      {/* Interactive Swipable Album Artwork */}
+      {/* Swipeable Artwork */}
       <GestureHandlerRootView style={styles.artworkContainer}>
-        {/* Decorative peeking cards — gives a carousel/stack impression
-            without needing real previous/next track artwork. */}
-        <Animated.View
-          style={[
-            styles.stackCard,
-            { backgroundColor: colors.surface },
-            leftStackStyle,
-          ]}
-        />
-        <Animated.View
-          style={[
-            styles.stackCard,
-            { backgroundColor: colors.surface },
-            rightStackStyle,
-          ]}
-        />
-
         <GestureDetector gesture={panGesture}>
-          <Animated.View style={[styles.artworkCard, animatedStyle]}>
+          <Animated.View style={[styles.shadowWrapper, animatedStyle]}>
             <Image
               source={
                 currentTrack?.artwork
@@ -239,31 +203,19 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   artworkContainer: {
-    height: width * 0.88,
-    marginVertical: 10,
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 20,
   },
-  artworkCard: {
-    width: width * 0.82,
-    height: width * 0.82,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  stackCard: {
-    position: "absolute",
-    width: width * 0.74,
-    height: width * 0.74,
+  shadowWrapper: {
+    width: ARTWORK_SIZE,
+    height: ARTWORK_SIZE,
     borderRadius: 16,
-    opacity: 0.35,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 12,
   },
   albumArt: {
     width: "100%",

@@ -1,4 +1,3 @@
-import { useSelectionMode } from "@/constants/Selectionmodecontext";
 import { useTheme } from "@/constants/ThemeContext";
 import React, { useEffect, useState } from "react";
 import {
@@ -28,7 +27,6 @@ export default function BatchEditModal({
   onSubmit,
 }: Props) {
   const { colors } = useTheme();
-  const { setIsSelectionModeActive } = useSelectionMode();
   const [value, setValue] = useState("");
 
   useEffect(() => {
@@ -38,14 +36,13 @@ export default function BatchEditModal({
   }, [visible]);
 
   const handleClose = () => {
-    setIsSelectionModeActive(false);
     onClose();
   };
 
   const handleSave = () => {
     if (value.trim()) {
       onSubmit(value.trim());
-      handleClose();
+      onClose();
     }
   };
 
@@ -67,7 +64,7 @@ export default function BatchEditModal({
               backgroundColor: colors.surface,
               borderColor: colors.border,
               // Fixed low position (right near the bottom where the navbar usually sits)
-              marginBottom: Platform.OS === "ios" ? 30 : 20,
+              marginBottom: Platform.OS === "ios" ? 420 : 20,
             },
           ]}
         >

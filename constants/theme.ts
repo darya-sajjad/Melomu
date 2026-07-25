@@ -1,4 +1,15 @@
-export const darkColors = {
+// AFTER:
+export type Colors = {
+  background: string;
+  surface: string;
+  primary: string;
+  text: string;
+  textSecondary: string;
+  border: string;
+  active: string;
+};
+
+export const darkColors: Colors = {
   background: "#1B4965", // Main screen background
   surface: "#62B6CB", // Card backgrounds, player controls row
   primary: "#BEE9E8", // Accent buttons, active tab icon, sliders
@@ -8,7 +19,7 @@ export const darkColors = {
   active: "#c762cb",
 };
 
-export const lightColors = {
+export const lightColors: Colors = {
   background: "#F5F6F8", // Soft off-white / light cool grey background
   surface: "#FFFFFF", // Card, container, and modal backgrounds
   primary: "#181A20", // Deep charcoal for main buttons, titles, and key accents

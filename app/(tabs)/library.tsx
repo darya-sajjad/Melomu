@@ -38,7 +38,6 @@ export default function LibraryScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<CategoryTab>("songs");
 
-  // Multi-select State
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedSongIds, setSelectedSongIds] = useState<string[]>([]);
   const [batchEditType, setBatchEditType] = useState<"album" | "artist" | null>(
@@ -65,24 +64,21 @@ export default function LibraryScreen() {
     }
   }, [isFocused]);
 
-  // Enter selection mode helper
   const enterSelectMode = (type: "album" | "artist" | null = null) => {
     setActiveTab("songs");
     setIsSelectMode(true);
     setBatchEditType(type);
-    setIsSelectionModeActive(true); // Drops TabBar & MiniPlayer
+    setIsSelectionModeActive(true);
   };
 
-  // Exit selection mode helper (Guarantees TabBar returns)
   const exitSelectMode = () => {
     setIsSelectMode(false);
     setSelectedSongIds([]);
     setBatchEditType(null);
     setIsBatchEditModalVisible(false);
-    setIsSelectionModeActive(false); // Brings TabBar back!
+    setIsSelectionModeActive(false);
   };
 
-  // Handle individual song check toggles
   const handleToggleSelectSong = (id: string) => {
     setSelectedSongIds((prev) =>
       prev.includes(id) ? prev.filter((sId) => sId !== id) : [...prev, id],
@@ -97,7 +93,6 @@ export default function LibraryScreen() {
     }
   };
 
-  // 1. Batch Delete Function
   const handleExecuteBatchDelete = () => {
     if (selectedSongIds.length === 0) return;
 
@@ -128,7 +123,6 @@ export default function LibraryScreen() {
     );
   };
 
-  // 2. Batch Metadata Save (Album / Artist)
   const handleExecuteBatchUpdate = async (newValue: string) => {
     if (selectedSongIds.length === 0 || !batchEditType) return;
 
@@ -148,7 +142,7 @@ export default function LibraryScreen() {
         );
         if (albumArt?.artwork_path) {
           await db.runAsync(
-            `UPDATE songs SET custom_artwork_path = ? WHERE id IN (${placeholders}) AND (custom_artwork_path IS NULL OR custom_artwork_path = '')`,
+            `UPDATE songs SET custom_artwork_path = ?, artwork_source = 'album' WHERE id IN (${placeholders}) AND (artwork_source IS NULL OR artwork_source = 'album')`,
             [albumArt.artwork_path, ...selectedSongIds],
           );
         }
@@ -161,7 +155,6 @@ export default function LibraryScreen() {
     }
   };
 
-  // Selected Song Objects for Playlist Modal
   const selectedSongObjects = songs.filter((s) =>
     selectedSongIds.includes(s.id),
   );
@@ -177,8 +170,7 @@ export default function LibraryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: "#1E1E1E" }]}>
-      {/* Search Header */}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <LibraryTopSection
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -187,7 +179,6 @@ export default function LibraryScreen() {
         onSelectMultipleToEditArtist={() => enterSelectMode("artist")}
       />
 
-      {/* Main Sheet */}
       <View
         style={[
           styles.curvedSheet,
@@ -197,7 +188,6 @@ export default function LibraryScreen() {
           },
         ]}
       >
-        {/* Category Pills Row */}
         <View style={styles.tabBar}>
           {CATEGORY_TABS.map((tab) => {
             const isActive = activeTab === tab.key;
@@ -231,7 +221,6 @@ export default function LibraryScreen() {
           })}
         </View>
 
-        {/* Tab Content */}
         <View style={styles.tabContent}>
           {activeTab === "songs" && (
             <SongsTab
@@ -253,7 +242,6 @@ export default function LibraryScreen() {
           )}
         </View>
 
-        {/* Floating Action Bar (Appears when in select mode) */}
         {isSelectMode && (
           <View
             style={[
@@ -278,7 +266,6 @@ export default function LibraryScreen() {
             </TouchableOpacity>
 
             <View style={styles.rightActions}>
-              {/* Add to Playlist button */}
               {!batchEditType && selectedSongIds.length > 0 && (
                 <TouchableOpacity
                   onPress={() => setIsPlaylistModalVisible(true)}
@@ -292,7 +279,6 @@ export default function LibraryScreen() {
                 </TouchableOpacity>
               )}
 
-              {/* Apply Edit or Delete button */}
               <TouchableOpacity
                 disabled={selectedSongIds.length === 0}
                 onPress={() => {
@@ -311,9 +297,7 @@ export default function LibraryScreen() {
                   style={[
                     styles.actionText,
                     {
-                      color: batchEditType
-                        ? colors.primary
-                        : colors.notification || "#FF5252",
+                      color: batchEditType ? colors.primary : "#FF5252",
                     },
                   ]}
                 >
@@ -333,7 +317,6 @@ export default function LibraryScreen() {
         onSubmit={handleExecuteBatchUpdate}
       />
 
-      {/* Bulk Add to Playlist Modal */}
       <AddToPlaylistModal
         isVisible={isPlaylistModalVisible}
         songs={selectedSongObjects}

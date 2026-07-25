@@ -1,6 +1,12 @@
 import { ThemePresetOption } from "@/components/settings/ThemePresetModal";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useColorScheme } from "react-native";
 import { Colors, darkColors, lightColors } from "./theme";
 
@@ -74,7 +80,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   // Generate dynamic color palettes for both Light & Dark modes per preset
-  const getDynamicColors = (): Colors => {
+  const colors = useMemo(() => {
     const isDark = effectiveTheme === "dark";
 
     switch (activePreset) {
@@ -113,13 +119,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
       default:
         return isDark ? darkColors : lightColors;
     }
-  };
+  }, [effectiveTheme, activePreset]);
 
   return (
     <ThemeContext.Provider
       value={{
         theme: effectiveTheme,
-        colors: getDynamicColors(),
+        colors,
         toggleTheme,
         setTheme,
         activePreset,

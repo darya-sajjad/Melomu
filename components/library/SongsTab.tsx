@@ -1,10 +1,10 @@
 import placeholderIcon from "@/assets/icon.png";
 import AddToPlaylistModal from "@/components/AddToPlaylistModal";
-import EditMetaModal from "@/components/EditMetaModal";
+import EditMetaModal from "@/components/library/EditMetaModal";
 import { useAudio } from "@/constants/AudioContext";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Animated,
   FlatList,
@@ -52,10 +52,13 @@ export default function SongsTab({
 
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+
   const [addingToPlaylistSong, setAddingToPlaylistSong] = useState<Song | null>(
     null,
   );
   const [isAddToPlaylistVisible, setIsAddToPlaylistVisible] = useState(false);
+
+  const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
 
   const filteredSongs = songs.filter(
     (s) =>
@@ -90,7 +93,6 @@ export default function SongsTab({
           </Text>
         }
         renderItem={({ item }) => {
-          let swipeableRef: Swipeable | null = null;
           const isSelected = selectedSongIds.includes(item.id);
 
           const renderRightActions = (
@@ -139,7 +141,7 @@ export default function SongsTab({
           return (
             <Swipeable
               ref={(ref) => {
-                swipeableRef = ref;
+                if (ref) swipeableRefs.current.set(item.id, ref);
               }}
               enabled={!isSelectMode}
               renderRightActions={renderRightActions}
@@ -147,7 +149,7 @@ export default function SongsTab({
               friction={2}
               onSwipeableOpen={() => {
                 addToQueue(item);
-                swipeableRef?.close();
+                swipeableRefs.current.get(item.id)?.close();
               }}
             >
               <TouchableOpacity

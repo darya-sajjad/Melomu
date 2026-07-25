@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from "expo-av";
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -87,6 +88,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const shuffleRef = useRef(shuffle);
   const repeatModeRef = useRef(repeatMode);
   const userQueueCountRef = useRef(0);
+  const fadeCancelRef = useRef(false);
 
   // Synchronize internal refs with state for UI components
   const updateQueueState = (newQueue: Song[], newIndex: number) => {
@@ -110,18 +112,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         const savedGapless = await AsyncStorage.getItem("setting-gapless");
         if (savedGapless !== null) {
-          const setGaplessPlayback = async (enabled: boolean) => {
-            setGaplessState(enabled);
-            if (!enabled && nextSoundRef.current) {
-              nextSoundRef.current.unloadAsync().catch(() => {});
-              nextSoundRef.current = null;
-              preloadedIndexRef.current = -1;
-            }
-            await AsyncStorage.setItem(
-              "setting-gapless",
-              JSON.stringify(enabled),
-            );
-          };
+          setGaplessState(JSON.parse(savedGapless));
         }
 
         const savedCrossfade = await AsyncStorage.getItem("setting-crossfade");
@@ -248,24 +239,27 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     toVolume: number,
     durationSeconds: number,
   ) => {
+    fadeCancelRef.current = false;
+
     if (durationSeconds <= 0) {
       await sound.setVolumeAsync(toVolume);
       return;
     }
 
-    const steps = 10;
+    const steps = Math.max(30, Math.floor(durationSeconds * 30)); // 30 updates/sec for smoothness
     const stepTime = (durationSeconds * 1000) / steps;
     const volumeStep = (toVolume - fromVolume) / steps;
 
     for (let i = 0; i <= steps; i++) {
+      if (fadeCancelRef.current) break;
+
       const targetVolume = Math.min(
         Math.max(fromVolume + volumeStep * i, 0),
         1,
       );
       try {
         await sound.setVolumeAsync(targetVolume);
-      } catch (e) {
-        // Ignore if sound was unmounted during fade
+      } catch {
         break;
       }
       await new Promise((resolve) => setTimeout(resolve, stepTime));
@@ -284,7 +278,8 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       let soundToPlay: Audio.Sound;
       let usedPreload = false;
 
-      // 1. Start the NEXT track first — this is the whole point of preloading.
+      //cancel any ongoing crossfade
+      fadeCancelRef.current = true;
       if (
         gaplessPlayback &&
         preloadedIndexRef.current === index &&
@@ -423,12 +418,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       if (soundRef.current) {
         const status = await soundRef.current.getStatusAsync();
         if (status.isLoaded) {
-          await soundRef.current.setStatusAsync({
-            positionMillis: millis,
-            seekMillisToleranceBefore: 500,
-            seekMillisToleranceAfter: 500,
-          });
-
+          await soundRef.current.setPositionAsync(millis);
           setPosition(millis);
         }
       }
@@ -466,7 +456,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const playNext = async () => {
-    advance(1, true);
+    advance(1, repeatModeRef.current !== "off");
   };
 
   const playPrevious = async () => {
@@ -474,7 +464,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       await loadAndPlayIndex(indexRef.current);
       return;
     }
-    advance(-1, true);
+    advance(-1, repeatModeRef.current === "all");
   };
 
   const toggleShuffle = () => {
@@ -504,9 +494,10 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   };
 
-  const reloadLyrics = async () => {
+  const reloadLyrics = useCallback(async () => {
     if (currentSong) await loadOfflineCachedLyrics(currentSong.id);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSong?.id]);
 
   const addToQueueNext = (song: Song) => {
     const newQueue = [...queueRef.current];
