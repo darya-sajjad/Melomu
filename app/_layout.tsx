@@ -1,10 +1,10 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 import "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import MiniPlayer from "@/components/MiniPlayer";
 import { AudioProvider } from "@/constants/AudioContext";
 import { initializeDatabase, seedMockSongs } from "@/constants/Database";
 import { ThemeProvider, useTheme } from "@/constants/ThemeContext";
@@ -33,7 +33,18 @@ function AppContent() {
   }, []);
 
   if (!isReady || !context || !context.colors) {
-    return null;
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#000",
+        }}
+      >
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </View>
+    );
   }
 
   return (
@@ -50,7 +61,6 @@ function AppContent() {
         />
       </Stack>
       <StatusBar style={context.theme === "dark" ? "light" : "dark"} />
-      <MiniPlayer />
     </>
   );
 }

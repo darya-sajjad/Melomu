@@ -1,10 +1,21 @@
 import placeholderIcon from "@/assets/icon.png";
 import { useAudio } from "@/constants/AudioContext";
+import {
+  TAB_BAR_HEIGHT,
+  useSelectionMode,
+} from "@/constants/Selectionmodecontext";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
+import {
+  Animated,
+  Image,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import TextTicker from "react-native-text-ticker";
 
 export default function MiniPlayer() {
@@ -12,6 +23,7 @@ export default function MiniPlayer() {
   const { colors } = useTheme();
   const { currentSong, isPlaying, position, duration, pauseSong, resumeSong } =
     useAudio();
+  const { tabBarTranslateY } = useSelectionMode();
 
   if (!currentSong) return null;
 
@@ -23,113 +35,126 @@ export default function MiniPlayer() {
     }
   };
 
-  const progressPercent = Math.min(
-    Math.max((position / duration) * 100, 0),
-    100,
-  );
+  const progressPercent =
+    duration > 0 ? Math.min(Math.max((position / duration) * 100, 0), 100) : 0;
+
+  // Base resting bottom offset when TabBar is visible
+  const baseBottom = TAB_BAR_HEIGHT + (Platform.OS === "ios" ? 10 : 8);
+
+  // Map tabBarTranslateY to push the MiniPlayer entirely off-screen (150px down) when selection mode is active
+  const translateY = tabBarTranslateY.interpolate({
+    inputRange: [0, TAB_BAR_HEIGHT],
+    outputRange: [0, TAB_BAR_HEIGHT + 150],
+    extrapolate: "clamp",
+  });
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={() => router.push("/player")} // This slides up your new app/player.tsx screen!
+    <Animated.View
       style={[
-        styles.container,
-        { backgroundColor: colors.surface, borderColor: colors.border },
+        styles.wrapper,
+        {
+          bottom: baseBottom,
+          transform: [{ translateY }],
+        },
       ]}
     >
-      {/* Left Block: Album Thumbnail Artwork */}
-      <Image
-        source={
-          currentSong.custom_artwork_path
-            ? { uri: currentSong.custom_artwork_path }
-            : placeholderIcon
-        }
-        style={styles.artwork}
-      />
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => router.push("/player")}
+        style={[
+          styles.content,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
+        {/* Left Block: Album Thumbnail Artwork */}
+        <Image
+          source={
+            currentSong.custom_artwork_path
+              ? { uri: currentSong.custom_artwork_path }
+              : placeholderIcon
+          }
+          style={styles.artwork}
+        />
 
-      {/* Middle Block: Labels + Figma Progress Bar Stack */}
-      <View style={styles.metaContainer}>
-        <View style={styles.textRow}>
-          <View
-            pointerEvents="none"
-            style={{ width: "100%", overflow: "hidden" }}
-          >
-            <TextTicker
-              style={[styles.title, { color: colors.text }]}
-              duration={11000}
-              loop
-              bounce={false}
-              repeatSpacer={40}
-              marqueeDelay={1200}
+        {/* Middle Block: Labels + Progress Bar Stack */}
+        <View style={styles.metaContainer}>
+          <View style={styles.textRow}>
+            <View
+              pointerEvents="none"
+              style={{ width: "100%", overflow: "hidden" }}
             >
-              {`${currentSong.title} • ${currentSong.artist || "Unknown Artist"}`}
-            </TextTicker>
+              <TextTicker
+                style={[styles.title, { color: colors.text }]}
+                duration={11000}
+                loop
+                bounce={false}
+                repeatSpacer={40}
+                marqueeDelay={1200}
+              >
+                {`${currentSong.title} • ${currentSong.artist || "Unknown Artist"}`}
+              </TextTicker>
+            </View>
+          </View>
+
+          {/* Progress Tracker */}
+          <View
+            style={[styles.progressTrack, { backgroundColor: colors.border }]}
+          >
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  backgroundColor: colors.primary || colors.background,
+                  width: `${progressPercent}%`,
+                },
+              ]}
+            />
           </View>
         </View>
 
-        {/* Custom Figma Progress Line Tracker Track */}
-        <View
-          style={[styles.progressTrack, { backgroundColor: colors.border }]}
+        {/* Right Block: Play/Pause Button */}
+        <TouchableOpacity
+          onPress={handlePlaybackToggle}
+          style={styles.playButton}
+          activeOpacity={0.7}
         >
-          <View
-            style={[
-              styles.progressFill,
-              {
-                backgroundColor: colors.background,
-                width: `${progressPercent}%`,
-              },
-            ]}
+          <Ionicons
+            name={isPlaying ? "pause-outline" : "play-outline"}
+            size={24}
+            color={colors.text}
           />
-        </View>
-      </View>
-
-      {/* Right Block: Interactive Symbol Button Trigger */}
-      {/* Note: We wrap the button icon in a nested TouchableOpacity so tapping the play icon doesn't accidentally trigger the page routing step */}
-      <TouchableOpacity
-        onPress={handlePlaybackToggle}
-        style={styles.playButton}
-        activeOpacity={0.7}
-      >
-        <Ionicons
-          name={isPlaying ? "pause-outline" : "play-outline"}
-          size={24}
-          color={colors.text}
-        />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
     position: "absolute",
-    bottom: 90,
-    width: 412,
+    width: "94%",
     alignSelf: "center",
+    zIndex: 99,
+  },
+  content: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderRadius: 14,
     elevation: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.12,
     shadowRadius: 6,
   },
   artwork: {
-    width: 52,
-    height: 52,
-    borderRadius: 5,
+    width: 48,
+    height: 48,
+    borderRadius: 8,
     marginRight: 12,
-  },
-  artworkShadow: {
-    shadowColor: "#1E1E1E",
-    shadowOffset: { width: -2, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 5,
   },
   metaContainer: {
     flex: 1,
@@ -140,7 +165,7 @@ const styles = StyleSheet.create({
   textRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 6,
     width: "100%",
     overflow: "hidden",
   },
@@ -148,21 +173,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  artist: {
-    fontSize: 12,
-    marginTop: 2,
-  },
   progressTrack: {
-    height: 5,
+    height: 4,
     borderRadius: 2,
-    borderWidth: 1,
-    borderColor: "#1B4965",
     width: "100%",
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    borderRadius: 0,
+    borderRadius: 2,
   },
   playButton: {
     width: 40,

@@ -22,9 +22,15 @@ export async function initializeDatabase() {
       album TEXT,
       duration INTEGER DEFAULT 0,
       custom_artwork_path TEXT,
+      artwork_source TEXT DEFAULT 'album',
       play_count INTEGER DEFAULT 0,
       last_played INTEGER DEFAULT 0,
       is_favorite INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS album_artworks (
+      album TEXT PRIMARY KEY NOT NULL,
+      artwork_path TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS lyrics_cache (
@@ -50,6 +56,14 @@ export async function initializeDatabase() {
       FOREIGN KEY(song_id) REFERENCES songs(id) ON DELETE CASCADE
     );
   `);
+
+  try {
+    await db.execAsync(
+      `ALTER TABLE songs ADD COLUMN artwork_source TEXT DEFAULT 'album';`,
+    );
+  } catch {
+    // Column already exists — safe to ignore
+  }
 
   isDbInitialized = true;
   console.log("✅ Melomu Persistent Database completely active and locked!");

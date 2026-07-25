@@ -1,5 +1,5 @@
 import placeholderIcon from "@/assets/icon.png";
-import { Song } from "@/components/SongsTab";
+import { Song } from "@/components/library/SongsTab";
 import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
@@ -9,15 +9,15 @@ import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 export default function ArtistDetailScreen() {
@@ -35,7 +35,6 @@ export default function ArtistDetailScreen() {
     try {
       const db = await dbAsync;
 
-      // Ensure artist artworks table exists
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS artist_artworks (
           artist TEXT PRIMARY KEY,
@@ -43,13 +42,11 @@ export default function ArtistDetailScreen() {
         );
       `);
 
-      // Fetch artist avatar from dedicated artist table
       const artistRow = await db.getFirstAsync<{ artwork_path: string }>(
         "SELECT artwork_path FROM artist_artworks WHERE artist = ?",
         [artistName],
       );
 
-      // Fetch tracks for this artist
       const result = await db.getAllAsync<Song>(
         "SELECT * FROM songs WHERE artist = ?",
         [artistName],
@@ -101,7 +98,6 @@ export default function ArtistDetailScreen() {
         to: destPath,
       });
 
-      // Store ONLY in artist_artworks table so album covers remain unaffected
       const db = await dbAsync;
       await db.runAsync(
         `INSERT INTO artist_artworks (artist, artwork_path)
@@ -137,6 +133,41 @@ export default function ArtistDetailScreen() {
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
+  const renderTrack = useCallback(
+    ({ item, index }: { item: Song; index: number }) => (
+      <TouchableOpacity
+        activeOpacity={0.7}
+        style={[
+          styles.trackRow,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+        onPress={() => playSong(item, songs)}
+      >
+        <Text style={[styles.trackIndex, { color: colors.textSecondary }]}>
+          {index + 1}
+        </Text>
+        <View style={styles.trackMeta}>
+          <Text
+            style={[styles.trackTitle, { color: colors.text }]}
+            numberOfLines={1}
+          >
+            {item.title}
+          </Text>
+          <Text
+            style={[styles.albumSubtext, { color: colors.textSecondary }]}
+            numberOfLines={1}
+          >
+            {item.album}
+          </Text>
+        </View>
+        <Text style={[styles.trackDuration, { color: colors.textSecondary }]}>
+          {formatDuration(item.duration)}
+        </Text>
+      </TouchableOpacity>
+    ),
+    [colors, playSong, songs],
+  );
+
   if (isLoading) {
     return (
       <View
@@ -168,11 +199,18 @@ export default function ArtistDetailScreen() {
           <Image
             source={customAvatar ? { uri: customAvatar } : placeholderIcon}
             style={styles.circleAvatarLarge}
+            resizeMode="cover"
           />
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={promptChangePhoto}
-            style={[styles.editBadge, { backgroundColor: colors.primary }]}
+            style={[
+              styles.editBadge,
+              {
+                backgroundColor: colors.primary,
+                borderColor: colors.background,
+              },
+            ]}
           >
             <Ionicons name="pencil" size={16} color="#FFFFFF" />
           </TouchableOpacity>
@@ -201,39 +239,7 @@ export default function ArtistDetailScreen() {
         data={songs}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listPadding}
-        renderItem={({ item, index }) => (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={[
-              styles.trackRow,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-            onPress={() => playSong(item, songs)}
-          >
-            <Text style={[styles.trackIndex, { color: colors.textSecondary }]}>
-              {index + 1}
-            </Text>
-            <View style={styles.trackMeta}>
-              <Text
-                style={[styles.trackTitle, { color: colors.text }]}
-                numberOfLines={1}
-              >
-                {item.title}
-              </Text>
-              <Text
-                style={[styles.albumSubtext, { color: colors.textSecondary }]}
-                numberOfLines={1}
-              >
-                {item.album}
-              </Text>
-            </View>
-            <Text
-              style={[styles.trackDuration, { color: colors.textSecondary }]}
-            >
-              {formatDuration(item.duration)}
-            </Text>
-          </TouchableOpacity>
-        )}
+        renderItem={renderTrack}
       />
     </View>
   );
@@ -282,7 +288,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#000000",
   },
   artistName: {
     fontSize: 22,

@@ -1,4 +1,15 @@
-export const darkColors = {
+// AFTER:
+export type Colors = {
+  background: string;
+  surface: string;
+  primary: string;
+  text: string;
+  textSecondary: string;
+  border: string;
+  active: string;
+};
+
+export const darkColors: Colors = {
   background: "#1B4965", // Main screen background
   surface: "#62B6CB", // Card backgrounds, player controls row
   primary: "#BEE9E8", // Accent buttons, active tab icon, sliders
@@ -8,14 +19,12 @@ export const darkColors = {
   active: "#c762cb",
 };
 
-export const lightColors = {
-  background: "#BEE9E8", // Main deep dark screen background
-  surface: "#62B6CB", // Dark cards, dark player row
-  primary: "#1B4965", // Vibrant pink/neon accent buttons
-  text: "#1E1E1E", // Crisp white titles
-  textSecondary: "#1B4965", // Grayish artist text
-  border: "#62B6CB", // Dark divider lines
-  active: "#882a8b",
+export const lightColors: Colors = {
+  background: "#F5F6F8", // Soft off-white / light cool grey background
+  surface: "#FFFFFF", // Card, container, and modal backgrounds
+  primary: "#181A20", // Deep charcoal for main buttons, titles, and key accents
+  text: "#0D0E12", // Crisp dark text for track names and headings
+  textSecondary: "#8C919E", // Muted grey for artist names, durations, and inactive icons
+  border: "#E5E7EB", // Light subtle dividers and borders
+  active: "#181A20", // Active state color (matches primary button styling)
 };
-
-export type Colors = typeof lightColors;

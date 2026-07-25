@@ -3,15 +3,14 @@ import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import React, { useState } from "react";
 import {
-    Alert,
-    FlatList,
-    Linking,
-    Modal,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Linking,
+  Modal,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 // List of open source libraries used in Melomu
@@ -161,12 +160,10 @@ export default function AboutSection() {
             </TouchableOpacity>
           </View>
 
-          <FlatList
-            data={OPEN_SOURCE_LICENSES}
-            keyExtractor={(item) => item.name}
-            contentContainerStyle={{ padding: 16 }}
-            renderItem={({ item }) => (
+          <View style={{ padding: 16 }}>
+            {OPEN_SOURCE_LICENSES.map((item) => (
               <View
+                key={item.name}
                 style={[
                   styles.licenseCard,
                   {
@@ -189,8 +186,8 @@ export default function AboutSection() {
                   {item.description}
                 </Text>
               </View>
-            )}
-          />
+            ))}
+          </View>
         </SafeAreaView>
       </Modal>
     </View>

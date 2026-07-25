@@ -111,6 +111,7 @@ export default function EditMetaModal({
   const [artist, setArtist] = useState("");
   const [album, setAlbum] = useState("");
   const [artworkPath, setArtworkPath] = useState<string | null>(null);
+  const [isArtworkManuallySet, setIsArtworkManuallySet] = useState(false);
 
   useEffect(() => {
     if (song) {
@@ -118,6 +119,7 @@ export default function EditMetaModal({
       setArtist(song.artist || "");
       setAlbum(song.album || "");
       setArtworkPath(song.custom_artwork_path || null);
+      setIsArtworkManuallySet(false);
     }
   }, [song]);
 
@@ -159,6 +161,7 @@ export default function EditMetaModal({
       });
 
       setArtworkPath(destPath);
+      setIsArtworkManuallySet(true);
     } catch (error) {
       console.error("❌ Failed to select custom album art photo:", error);
     }
@@ -174,9 +177,40 @@ export default function EditMetaModal({
     try {
       const db = await dbAsync;
 
+      // Defensive — this table is normally created the first time someone
+      // visits AlbumDetailScreen, but a song can be filed into an album
+      // from here first (e.g. brand new install), so make sure it exists
+      // before querying it below.
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS album_artworks (
+          album TEXT PRIMARY KEY,
+          artwork_path TEXT
+        );
+      `);
+
+      let finalArtworkPath = artworkPath;
+      if (!finalArtworkPath && targetAlbum) {
+        const albumArt = await db.getFirstAsync<{ artwork_path: string }>(
+          "SELECT artwork_path FROM album_artworks WHERE album = ?",
+          [targetAlbum],
+        );
+        if (albumArt?.artwork_path) {
+          finalArtworkPath = albumArt.artwork_path;
+        }
+      }
+
+      const artworkSource = isArtworkManuallySet ? "manual" : "album";
+
       await db.runAsync(
-        "UPDATE songs SET title = ?, artist = ?, album = ?, custom_artwork_path = ? WHERE id = ?",
-        [targetTitle, targetArtist, targetAlbum, artworkPath, song.id],
+        "UPDATE songs SET title = ?, artist = ?, album = ?, custom_artwork_path = ?, artwork_source = ? WHERE id = ?",
+        [
+          targetTitle,
+          targetArtist,
+          targetAlbum,
+          finalArtworkPath,
+          artworkSource,
+          song.id,
+        ],
       );
 
       console.log(`✏️ Saved metadata edits for: ${targetTitle}`);

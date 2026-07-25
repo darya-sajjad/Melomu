@@ -1,10 +1,10 @@
 import placeholderIcon from "@/assets/icon.png";
 import AddToPlaylistModal from "@/components/AddToPlaylistModal";
-import EditMetaModal from "@/components/EditMetaModal";
+import EditMetaModal from "@/components/library/EditMetaModal";
 import { useAudio } from "@/constants/AudioContext";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Animated,
   FlatList,
@@ -31,22 +31,34 @@ interface SongsTabProps {
   songs: Song[];
   searchQuery: string;
   onRefreshDatabase: () => void;
+  // Multi-select — driven entirely by the parent's floating actionBar now.
+  // SongsTab only needs to know whether it's active and which ids are
+  // selected, so rows can show checkboxes and toggle selection on tap.
+  isSelectMode?: boolean;
+  selectedSongIds?: string[];
+  onToggleSelectSong?: (id: string) => void;
 }
 
 export default function SongsTab({
   songs,
   searchQuery,
   onRefreshDatabase,
+  isSelectMode = false,
+  selectedSongIds = [],
+  onToggleSelectSong,
 }: SongsTabProps) {
   const { colors } = useTheme();
   const { playSong, addToQueue } = useAudio();
 
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+
   const [addingToPlaylistSong, setAddingToPlaylistSong] = useState<Song | null>(
     null,
   );
   const [isAddToPlaylistVisible, setIsAddToPlaylistVisible] = useState(false);
+
+  const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
 
   const filteredSongs = songs.filter(
     (s) =>
@@ -66,6 +78,11 @@ export default function SongsTab({
 
   return (
     <View style={styles.container}>
+      {/* NOTE: the old duplicate "X Selected / Select All / Add to Playlist"
+          header that used to live here has been removed — library.tsx's
+          floating actionBar already covers all of that, and having both
+          on screen at once was the double-UI issue. */}
+
       <FlatList
         data={filteredSongs}
         keyExtractor={(item) => item.id}
@@ -76,12 +93,14 @@ export default function SongsTab({
           </Text>
         }
         renderItem={({ item }) => {
-          let swipeableRef: Swipeable | null = null;
+          const isSelected = selectedSongIds.includes(item.id);
 
           const renderRightActions = (
             progress: Animated.AnimatedInterpolation<number>,
             dragX: Animated.AnimatedInterpolation<number>,
           ) => {
+            if (isSelectMode) return null;
+
             const opacity = dragX.interpolate({
               inputRange: [-80, -20, 0],
               outputRange: [1, 0.5, 0],
@@ -122,31 +141,55 @@ export default function SongsTab({
           return (
             <Swipeable
               ref={(ref) => {
-                swipeableRef = ref;
+                if (ref) swipeableRefs.current.set(item.id, ref);
               }}
+              enabled={!isSelectMode}
               renderRightActions={renderRightActions}
               overshootRight={false}
               friction={2}
               onSwipeableOpen={() => {
                 addToQueue(item);
-                swipeableRef?.close();
+                swipeableRefs.current.get(item.id)?.close();
               }}
             >
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => playSong(item, songs)}
+                onPress={() => {
+                  if (isSelectMode) {
+                    onToggleSelectSong?.(item.id);
+                  } else {
+                    playSong(item, songs);
+                  }
+                }}
                 onLongPress={() => {
-                  setEditingSong(item);
-                  setIsModalVisible(true);
+                  if (!isSelectMode) {
+                    setEditingSong(item);
+                    setIsModalVisible(true);
+                  }
                 }}
                 style={[
                   styles.songCard,
                   {
-                    backgroundColor: colors.background,
-                    borderColor: colors.background,
+                    backgroundColor: isSelected
+                      ? colors.surface
+                      : colors.background,
+                    borderColor: isSelected
+                      ? colors.primary
+                      : colors.background,
                   },
                 ]}
               >
+                {/* Multi-Select Checkbox */}
+                {isSelectMode && (
+                  <View style={styles.checkboxContainer}>
+                    <Ionicons
+                      name={isSelected ? "checkbox" : "square-outline"}
+                      size={22}
+                      color={isSelected ? colors.primary : colors.textSecondary}
+                    />
+                  </View>
+                )}
+
                 <Image
                   source={
                     item.custom_artwork_path
@@ -177,21 +220,23 @@ export default function SongsTab({
                   {formatDuration(item.duration)}
                 </Text>
 
-                <TouchableOpacity
-                  activeOpacity={0.6}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  style={{ marginLeft: 10 }}
-                  onPress={() => {
-                    setAddingToPlaylistSong(item);
-                    setIsAddToPlaylistVisible(true);
-                  }}
-                >
-                  <Ionicons
-                    name="add-circle-outline"
-                    size={22}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
+                {!isSelectMode && (
+                  <TouchableOpacity
+                    activeOpacity={0.6}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={{ marginLeft: 10 }}
+                    onPress={() => {
+                      setAddingToPlaylistSong(item);
+                      setIsAddToPlaylistVisible(true);
+                    }}
+                  >
+                    <Ionicons
+                      name="add-circle-outline"
+                      size={22}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                )}
               </TouchableOpacity>
             </Swipeable>
           );
@@ -219,7 +264,7 @@ const styles = StyleSheet.create({
   },
   listPadding: {
     paddingHorizontal: 16,
-    paddingBottom: 50,
+    paddingBottom: 80,
   },
   emptyText: {
     textAlign: "center",
@@ -234,6 +279,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 4,
     borderWidth: 1,
+  },
+  checkboxContainer: {
+    marginRight: 10,
   },
   metaContainer: {
     flex: 1,

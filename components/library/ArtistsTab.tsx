@@ -3,16 +3,48 @@ import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Song } from "./SongsTab";
+import { Song } from "../library/SongsTab";
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  listPadding: {
+    paddingHorizontal: 16,
+    paddingBottom: 100,
+  },
+  artistRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  circleAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    marginRight: 16,
+  },
+  artistName: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  emptyText: {
+    textAlign: "center",
+    marginTop: 40,
+    fontSize: 15,
+  },
+});
 
 interface ArtistsTabProps {
   songs: Song[];
@@ -79,6 +111,36 @@ export default function ArtistsTab({ songs, searchQuery }: ArtistsTabProps) {
     a.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  // AFTER:
+  const renderArtistItem = useCallback(
+    ({ item }: { item: ArtistItem }) => (
+      <TouchableOpacity
+        activeOpacity={0.7}
+        style={[styles.artistRow, { borderBottomColor: colors.border }]}
+        onPress={() =>
+          router.push({
+            pathname: "/artist",
+            params: { name: item.name },
+          })
+        }
+      >
+        <Image
+          source={item.avatar ? { uri: item.avatar } : placeholderIcon}
+          style={styles.circleAvatar}
+        />
+        <Text style={[styles.artistName, { color: colors.text }]}>
+          {item.name}
+        </Text>
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={colors.textSecondary}
+        />
+      </TouchableOpacity>
+    ),
+    [colors.border, colors.text, colors.textSecondary, router],
+  );
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -90,64 +152,8 @@ export default function ArtistsTab({ songs, searchQuery }: ArtistsTabProps) {
             No artists found.
           </Text>
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={[styles.artistRow, { borderBottomColor: colors.border }]}
-            onPress={() =>
-              router.push({
-                pathname: "/artist",
-                params: { name: item.name },
-              })
-            }
-          >
-            <Image
-              source={item.avatar ? { uri: item.avatar } : placeholderIcon}
-              style={styles.circleAvatar}
-            />
-            <Text style={[styles.artistName, { color: colors.text }]}>
-              {item.name}
-            </Text>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-        )}
+        renderItem={renderArtistItem}
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  listPadding: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
-  },
-  artistRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  circleAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    marginRight: 16,
-  },
-  artistName: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  emptyText: {
-    textAlign: "center",
-    marginTop: 40,
-    fontSize: 15,
-  },
-});
