@@ -34,7 +34,10 @@ export async function fetchAndCacheLyrics(
     const apiUrl = `https://lrclib.net/api/search?q=${searchQuery}`;
 
     console.log(`🌐 Hitting Fuzzy Search Endpoint: ${apiUrl}`);
-    const response = await fetch(apiUrl);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const response = await fetch(apiUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(

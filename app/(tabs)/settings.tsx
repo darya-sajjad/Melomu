@@ -27,7 +27,6 @@ export default function SettingsScreen() {
     setCrossfadeDuration,
   } = useAudio();
 
-  // Scanning Progress & Stats State
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState({
     currentTrack: "",
@@ -37,12 +36,17 @@ export default function SettingsScreen() {
   const [dbSongCount, setDbSongCount] = useState(0);
   const [storageSizeMB, setStorageSizeMB] = useState("0.0");
 
-  // Helper: Extract artwork binary embedded in audio tags
   const extractEmbeddedArtwork = async (
     uri: string,
     songId: string,
   ): Promise<string | null> => {
     try {
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      if (fileInfo.exists && (fileInfo.size as number) > 25 * 1024 * 1024) {
+        console.log("ℹ️ File too large for artwork extraction, skipping:", uri);
+        return null;
+      }
+
       const base64File = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
@@ -50,6 +54,7 @@ export default function SettingsScreen() {
 
       const metadata = await parseBuffer(fileBuffer);
       const picture = metadata.common.picture?.[0];
+
       if (!picture) return null;
 
       const base64Data = Buffer.from(picture.data).toString("base64");
@@ -66,11 +71,9 @@ export default function SettingsScreen() {
     }
   };
 
-  // Helper: Refresh metrics displayed in Diagnostics section
   const calculateDiagnosticMetrics = async () => {
     try {
       const db = await dbAsync;
-
       const countResult: any = await db.getFirstAsync(
         "SELECT COUNT(*) as total FROM songs",
       );
@@ -110,7 +113,6 @@ export default function SettingsScreen() {
     }
   }, [isFocused]);
 
-  // Handler: Batch folder / multi-track audio scanner
   const handleBatchFolderScan = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -175,7 +177,7 @@ export default function SettingsScreen() {
               exactDurationMillis = status.durationMillis;
             }
             await sound.unloadAsync();
-          } catch (e) {
+          } catch {
             // Duration fallback
           }
 
@@ -214,7 +216,6 @@ export default function SettingsScreen() {
     }
   };
 
-  // Handler: Developer Wipe Tool
   const handleNukeDatabaseCache = () => {
     Alert.alert(
       "☢️ Nuke Database & Cache?",
@@ -262,10 +263,8 @@ export default function SettingsScreen() {
         Settings
       </Text>
 
-      {/* 1. APPEARANCE */}
       <AppearanceSection />
 
-      {/* 2. PLAYBACK */}
       <PlaybackSection
         gaplessPlayback={gaplessPlayback}
         onToggleGapless={setGaplessPlayback}
@@ -273,26 +272,21 @@ export default function SettingsScreen() {
         onChangeCrossfade={setCrossfadeDuration}
       />
 
-      {/* 3. IMPORT & STORAGE */}
       <ImportStorageSection
         onScanFolder={handleBatchFolderScan}
         isScanning={isScanning}
       />
 
-      {/* 4. BACKUP & RESTORE */}
       <BackupRestoreSection />
 
-      {/* 5. DEVELOPER DIAGNOSTICS */}
       <DeveloperDiagnosticsSection
         dbSongCount={dbSongCount}
         storageSizeMB={storageSizeMB}
         onNuke={handleNukeDatabaseCache}
       />
 
-      {/* 6. ABOUT */}
       <AboutSection />
 
-      {/* PROGRESS MODAL (Overlay during batch scan) */}
       <ImportProgressModal
         visible={isScanning}
         currentTrackName={scanProgress.currentTrack}

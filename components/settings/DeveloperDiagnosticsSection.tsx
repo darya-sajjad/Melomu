@@ -1,7 +1,13 @@
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 interface DeveloperDiagnosticsProps {
   dbSongCount: number;
@@ -29,7 +35,11 @@ export default function DeveloperDiagnosticsSection({
         style={[
           styles.cardContainer,
           styles.dashedCard,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            borderStyle: Platform.OS === "ios" ? "dashed" : "solid",
+          },
         ]}
       >
         <View style={styles.metricRow}>
@@ -83,7 +93,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   dashedCard: {
-    borderStyle: "dashed",
     padding: 16,
   },
   rowTitle: {

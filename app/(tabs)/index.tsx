@@ -1,5 +1,5 @@
 import placeholderIcon from "@/assets/icon.png";
-import CreatePlaylistModal from "@/components/CreatePlaylistModal";
+import CreatePlaylistModal from "@/components/Home/CreatePlaylistModal";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,14 +7,13 @@ import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  FlatList,
   Image,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 interface SmartPlaylistCard {
@@ -118,17 +117,8 @@ export default function HomeScreen() {
         />
 
         {/* Smart Playlists List */}
-        <FlatList
-          data={smartPlaylists}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-          ItemSeparatorComponent={() => (
-            /* 3. 80% Wide Thinner Line between items */
-            <View
-              style={[styles.thinDivider, { backgroundColor: colors.border }]}
-            />
-          )}
-          renderItem={({ item }) => (
+        {smartPlaylists.map((item, index) => (
+          <React.Fragment key={item.id}>
             <TouchableOpacity
               activeOpacity={0.75}
               onPress={() =>
@@ -163,8 +153,13 @@ export default function HomeScreen() {
                 </Text>
               </View>
             </TouchableOpacity>
-          )}
-        />
+            {index < smartPlaylists.length - 1 && (
+              <View
+                style={[styles.thinDivider, { backgroundColor: colors.border }]}
+              />
+            )}
+          </React.Fragment>
+        ))}
 
         {/* 2. Full-width Thicker Divider below Smart Playlists */}
         {customPlaylists.length > 0 && (
@@ -177,18 +172,9 @@ export default function HomeScreen() {
         )}
 
         {/* Custom Playlists List */}
-        {customPlaylists.length > 0 && (
-          <FlatList
-            data={customPlaylists}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            ItemSeparatorComponent={() => (
-              /* 80% Wide Thinner Line between custom items */
-              <View
-                style={[styles.thinDivider, { backgroundColor: colors.border }]}
-              />
-            )}
-            renderItem={({ item }) => (
+        {customPlaylists.length > 0 &&
+          customPlaylists.map((item, index) => (
+            <React.Fragment key={item.id}>
               <TouchableOpacity
                 activeOpacity={0.75}
                 onPress={() =>
@@ -227,9 +213,16 @@ export default function HomeScreen() {
                   </Text>
                 </View>
               </TouchableOpacity>
-            )}
-          />
-        )}
+              {index < customPlaylists.length - 1 && (
+                <View
+                  style={[
+                    styles.thinDivider,
+                    { backgroundColor: colors.border },
+                  ]}
+                />
+              )}
+            </React.Fragment>
+          ))}
       </ScrollView>
 
       <CreatePlaylistModal
@@ -265,17 +258,15 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 10,
   },
-  /* 100% Width Thicker Divider */
   thickDivider: {
-    width: "120%",
+    width: "100%",
     height: 2,
     alignSelf: "center",
     marginBottom: 16,
     opacity: 0.8,
   },
-  /* 80% Width Thinner Inset Divider */
   thinDivider: {
-    width: "98%",
+    width: "100%",
     height: 1,
     alignSelf: "center",
     marginVertical: 12,

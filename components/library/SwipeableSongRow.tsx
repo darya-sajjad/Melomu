@@ -1,7 +1,7 @@
 import { useAudio } from "@/constants/AudioContext";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useRef } from "react";
 import { Animated, StyleSheet } from "react-native";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 
@@ -13,7 +13,7 @@ interface Props {
 export default function SwipeableSongRow({ item, children }: Props) {
   const { colors } = useTheme();
   const { addToQueue } = useAudio();
-  let swipeableRef: Swipeable | null = null;
+  const swipeableRef = useRef<Swipeable | null>(null);
 
   const renderRightActions = (
     progress: Animated.AnimatedInterpolation<number>,
@@ -48,15 +48,13 @@ export default function SwipeableSongRow({ item, children }: Props) {
 
   return (
     <Swipeable
-      ref={(ref) => {
-        swipeableRef = ref;
-      }}
+      ref={swipeableRef}
       renderRightActions={renderRightActions}
       overshootRight={false}
       friction={2}
       onSwipeableOpen={() => {
         addToQueue(item);
-        swipeableRef?.close();
+        swipeableRef.current?.close();
       }}
     >
       {children}

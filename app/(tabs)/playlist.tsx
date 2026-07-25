@@ -1,13 +1,13 @@
 import placeholderIcon from "@/assets/icon.png";
-import EditPlaylistModal from "@/components/EditPlaylistModal";
-import SwipeableSongRow from "@/components/SwipeableSongRow";
+import EditPlaylistModal from "@/components/Home/EditPlaylistModal";
+import SwipeableSongRow from "@/components/library/SwipeableSongRow";
 import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -24,6 +24,8 @@ import DraggableFlatList, {
   RenderItemParams,
   ScaleDecorator,
 } from "react-native-draggable-flatlist";
+import { TouchableOpacity as RNGHTouchableOpacity } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
@@ -53,6 +55,7 @@ export default function PlaylistDetailScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { playSong, toggleFavorite } = useAudio();
+  const insets = useSafeAreaInsets();
 
   const { id, title } = useLocalSearchParams<{ id: string; title: string }>();
   const isCustomPlaylist = !SMART_PLAYLIST_IDS.includes(id || "");
@@ -219,82 +222,150 @@ export default function PlaylistDetailScreen() {
     );
   };
 
-  const displayTitle = playlistMeta?.name || title || "Playlist";
-  const displayArtwork = playlistMeta?.artwork_path
-    ? { uri: playlistMeta.artwork_path }
-    : placeholderIcon;
+  // AFTER:
+  const headerBlock = useMemo(() => {
+    const artwork = playlistMeta?.artwork_path
+      ? { uri: playlistMeta.artwork_path }
+      : placeholderIcon;
 
-  if (isLoading) {
+    const titleText = playlistMeta?.name || title || "Playlist";
+
     return (
-      <View
-        style={[styles.loadingCenter, { backgroundColor: colors.background }]}
-      >
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={styles.headerContainer}>
+        <View style={styles.navRow}>
+          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={26} color={colors.text} />
+          </TouchableOpacity>
+
+          {mode !== "normal" ? (
+            <TouchableOpacity onPress={exitMode} activeOpacity={0.7}>
+              <Text style={[styles.exitModeText, { color: colors.primary }]}>
+                {mode === "reorder" ? "Done" : "Cancel"}
+              </Text>
+            </TouchableOpacity>
+          ) : isCustomPlaylist ? (
+            <TouchableOpacity
+              onPress={() => setIsMenuOpen(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="ellipsis-vertical"
+                size={24}
+                color={colors.text}
+              />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 24 }} />
+          )}
+        </View>
+
+        <View style={styles.artworkWrapper}>
+          <Image
+            source={artwork}
+            style={[styles.mainCdArt, { backgroundColor: colors.surface }]}
+            resizeMode="cover"
+          />
+        </View>
+
+        <Text style={[styles.playlistMainTitle, { color: colors.text }]}>
+          {titleText}
+        </Text>
+        <Text
+          style={[styles.playlistDescription, { color: colors.textSecondary }]}
+        >
+          {mode === "select"
+            ? `${selectedIds.size} selected`
+            : `${songs.length} ${songs.length === 1 ? "Song" : "Songs"}`}
+        </Text>
       </View>
     );
-  }
+  }, [
+    colors,
+    mode,
+    isCustomPlaylist,
+    playlistMeta?.artwork_path,
+    playlistMeta?.name,
+    title,
+    selectedIds.size,
+    songs.length,
+    router,
+  ]);
 
-  const headerBlock = (
-    <View style={styles.headerContainer}>
-      <View style={styles.navRow}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={26} color={colors.text} />
-        </TouchableOpacity>
-
-        {mode !== "normal" ? (
-          <TouchableOpacity onPress={exitMode} activeOpacity={0.7}>
-            <Text style={[styles.exitModeText, { color: colors.primary }]}>
-              {mode === "reorder" ? "Done" : "Cancel"}
-            </Text>
-          </TouchableOpacity>
-        ) : isCustomPlaylist ? (
-          <TouchableOpacity
-            onPress={() => setIsMenuOpen(true)}
+  const renderNormalItem = useCallback(
+    ({ item }: { item: Song }) => {
+      return (
+        <SwipeableSongRow item={item}>
+          <RNGHTouchableOpacity
             activeOpacity={0.7}
+            onPress={() => playSong(item, songs)}
+            style={styles.songRowItem}
           >
-            <Ionicons name="ellipsis-vertical" size={24} color={colors.text} />
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 24 }} />
-        )}
-      </View>
+            <Image
+              source={
+                item.custom_artwork_path
+                  ? { uri: item.custom_artwork_path }
+                  : placeholderIcon
+              }
+              style={[styles.songRowArt, { backgroundColor: colors.surface }]}
+              resizeMode="cover"
+            />
+            <View style={styles.metaTextContainer}>
+              <Text
+                style={[styles.songTitleLabel, { color: colors.text }]}
+                numberOfLines={1}
+              >
+                {item.title}
+              </Text>
+              <Text
+                style={[
+                  styles.songArtistLabel,
+                  { color: colors.textSecondary },
+                ]}
+                numberOfLines={1}
+              >
+                {item.artist || "Local Audio"}
+              </Text>
+            </View>
 
-      <View style={styles.artworkWrapper}>
-        <Image
-          source={displayArtwork}
-          style={[styles.mainCdArt, { backgroundColor: colors.surface }]}
-          resizeMode="cover"
-        />
-      </View>
-
-      <Text style={[styles.playlistMainTitle, { color: colors.text }]}>
-        {displayTitle}
-      </Text>
-      <Text
-        style={[styles.playlistDescription, { color: colors.textSecondary }]}
-      >
-        {mode === "select"
-          ? `${selectedIds.size} selected`
-          : `${songs.length} ${songs.length === 1 ? "Song" : "Songs"}`}
-      </Text>
-    </View>
+            {isFavoritesPlaylist && (
+              <RNGHTouchableOpacity
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                onPress={async () => {
+                  await toggleFavorite(item.id);
+                  setSongs((prev) => prev.filter((s) => s.id !== item.id));
+                }}
+                style={{ paddingLeft: 12 }}
+              >
+                <Ionicons name="heart" size={22} color="#E94560" />
+              </RNGHTouchableOpacity>
+            )}
+          </RNGHTouchableOpacity>
+        </SwipeableSongRow>
+      );
+    },
+    [colors, isFavoritesPlaylist, playSong, songs, toggleFavorite],
   );
 
-  const renderNormalItem = ({ item }: { item: Song }) => {
-    return (
-      <SwipeableSongRow item={item}>
-        <TouchableOpacity
+  const renderSelectableItem = useCallback(
+    ({ item }: { item: Song }) => {
+      const isSelected = selectedIds.has(item.id);
+      return (
+        <RNGHTouchableOpacity
           activeOpacity={0.7}
-          onPress={() => playSong(item, songs)}
+          onPress={() => toggleSelected(item.id)}
           style={styles.songRowItem}
         >
+          <Ionicons
+            name={isSelected ? "checkbox" : "square-outline"}
+            size={22}
+            color={isSelected ? colors.primary : colors.textSecondary}
+            style={styles.selectIcon}
+          />
           <Image
-            source={
-              item.custom_artwork_path
-                ? { uri: item.custom_artwork_path } // Show custom artwork
-                : placeholderIcon // Fallback to placeholder (or just remove the Image altogether)
-            }
+            source={placeholderIcon}
             style={[styles.songRowArt, { backgroundColor: colors.surface }]}
+            resizeMode="cover"
           />
           <View style={styles.metaTextContainer}>
             <Text
@@ -310,105 +381,61 @@ export default function PlaylistDetailScreen() {
               {item.artist || "Local Audio"}
             </Text>
           </View>
-
-          {/* ✨ Heart Icon: Render ONLY inside dedicated Favorites Playlist screen ✨ */}
-          {isFavoritesPlaylist && (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              onPress={async () => {
-                // Perform context logic, flipping DB entry status
-                await toggleFavorite(item.id);
-
-                // ✅ Inside dedicated Favorites screen itself: Untagging removes it from current local screen state logic immediately logic smoothly immediately view smoothly
-                setSongs((prev) => prev.filter((s) => s.id !== item.id));
-              }}
-              style={{ paddingLeft: 12 }}
-            >
-              {/* Inside dedicated favorites, only filled heart icon state makes design sense logic smoothly immediately makes sense sense */}
-              <Ionicons name="heart" size={22} color="#E94560" />
-            </TouchableOpacity>
-          )}
-        </TouchableOpacity>
-      </SwipeableSongRow>
-    );
-  };
-
-  const renderSelectableItem = ({ item }: { item: Song }) => {
-    const isSelected = selectedIds.has(item.id);
-    return (
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => toggleSelected(item.id)}
-        style={styles.songRowItem}
-      >
-        <Ionicons
-          name={isSelected ? "checkbox" : "square-outline"}
-          size={22}
-          color={isSelected ? colors.primary : colors.textSecondary}
-          style={styles.selectIcon}
-        />
-        <Image
-          source={placeholderIcon}
-          style={[styles.songRowArt, { backgroundColor: colors.surface }]}
-        />
-        <View style={styles.metaTextContainer}>
-          <Text
-            style={[styles.songTitleLabel, { color: colors.text }]}
-            numberOfLines={1}
-          >
-            {item.title}
-          </Text>
-          <Text
-            style={[styles.songArtistLabel, { color: colors.textSecondary }]}
-            numberOfLines={1}
-          >
-            {item.artist || "Local Audio"}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderDraggableItem = ({
-    item,
-    drag,
-    isActive,
-  }: RenderItemParams<Song>) => (
-    <ScaleDecorator>
-      <TouchableOpacity
-        activeOpacity={1}
-        onLongPress={drag}
-        disabled={isActive}
-        style={[styles.songRowItem, { opacity: isActive ? 0.7 : 1 }]}
-      >
-        <Ionicons
-          name="reorder-three-outline"
-          size={22}
-          color={colors.textSecondary}
-          style={styles.selectIcon}
-        />
-        <Image
-          source={placeholderIcon}
-          style={[styles.songRowArt, { backgroundColor: colors.surface }]}
-        />
-        <View style={styles.metaTextContainer}>
-          <Text
-            style={[styles.songTitleLabel, { color: colors.text }]}
-            numberOfLines={1}
-          >
-            {item.title}
-          </Text>
-          <Text
-            style={[styles.songArtistLabel, { color: colors.textSecondary }]}
-            numberOfLines={1}
-          >
-            {item.artist || "Local Audio"}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    </ScaleDecorator>
+        </RNGHTouchableOpacity>
+      );
+    },
+    [colors, selectedIds],
   );
+
+  const renderDraggableItem = useCallback(
+    ({ item, drag, isActive }: RenderItemParams<Song>) => (
+      <ScaleDecorator>
+        <RNGHTouchableOpacity
+          activeOpacity={1}
+          onLongPress={drag}
+          disabled={isActive}
+          style={[styles.songRowItem, { opacity: isActive ? 0.7 : 1 }]}
+        >
+          <Ionicons
+            name="reorder-three-outline"
+            size={22}
+            color={colors.textSecondary}
+            style={styles.selectIcon}
+          />
+          <Image
+            source={placeholderIcon}
+            style={[styles.songRowArt, { backgroundColor: colors.surface }]}
+            resizeMode="cover"
+          />
+          <View style={styles.metaTextContainer}>
+            <Text
+              style={[styles.songTitleLabel, { color: colors.text }]}
+              numberOfLines={1}
+            >
+              {item.title}
+            </Text>
+            <Text
+              style={[styles.songArtistLabel, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {item.artist || "Local Audio"}
+            </Text>
+          </View>
+        </RNGHTouchableOpacity>
+      </ScaleDecorator>
+    ),
+    [colors],
+  );
+
+  if (isLoading) {
+    return (
+      <View
+        style={[styles.loadingCenter, { backgroundColor: colors.background }]}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -481,7 +508,11 @@ export default function PlaylistDetailScreen() {
           <View
             style={[
               styles.menuCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                top: insets.top + 46,
+              },
             ]}
           >
             <TouchableOpacity
@@ -633,7 +664,6 @@ const styles = StyleSheet.create({
   menuBackdrop: { flex: 1 },
   menuCard: {
     position: "absolute",
-    top: 90,
     right: 20,
     borderRadius: 14,
     borderWidth: 1,

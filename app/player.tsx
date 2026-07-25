@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function FullPlayerScreen() {
   const router = useRouter();
@@ -41,10 +42,10 @@ export default function FullPlayerScreen() {
   const [isLyricsVisible, setIsLyricsVisible] = useState(false);
 
   useEffect(() => {
-    if (isLyricsVisible) {
+    if (isLyricsVisible && currentSong) {
       reloadLyrics();
     }
-  }, [isLyricsVisible, reloadLyrics]);
+  }, [isLyricsVisible, currentSong, reloadLyrics]);
 
   if (!currentSong) {
     return (
@@ -55,77 +56,79 @@ export default function FullPlayerScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* 1. Header Navigation & Interactive Artwork Carousel */}
-      <PlayerHeaderArtwork
-        currentTrack={{
-          id: currentSong.id,
-          artwork: currentSong.custom_artwork_path,
-        }}
-        onNextTrack={playNext}
-        onPreviousTrack={playPrevious}
-      />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        {/* 1. Header Navigation & Interactive Artwork Carousel */}
+        <PlayerHeaderArtwork
+          currentTrack={{
+            id: currentSong.id,
+            artwork: currentSong.custom_artwork_path,
+          }}
+          onNextTrack={playNext}
+          onPreviousTrack={playPrevious}
+        />
 
-      {/* 2. Track Meta Info & Favorite Heart */}
-      <TrackInfo
-        title={currentSong.title}
-        artist={currentSong.artist}
-        isFavorite={isFavorite}
-        onToggleFavorite={toggleFavorite}
-      />
+        {/* 2. Track Meta Info & Favorite Heart */}
+        <TrackInfo
+          title={currentSong.title}
+          artist={currentSong.artist}
+          isFavorite={isFavorite}
+          onToggleFavorite={toggleFavorite}
+        />
 
-      {/* 3. Slider & Playback Controls Deck */}
-      <PlaybackSection
-        position={position}
-        duration={duration}
-        isPlaying={isPlaying}
-        shuffle={shuffle}
-        repeatMode={repeatMode}
-        onSeek={seekTo}
-        onPause={pauseSong}
-        onResume={resumeSong}
-        onNext={playNext}
-        onPrevious={playPrevious}
-        onToggleShuffle={toggleShuffle}
-        onCycleRepeatMode={cycleRepeatMode}
-      />
+        {/* 3. Slider & Playback Controls Deck */}
+        <PlaybackSection
+          position={position}
+          duration={duration}
+          isPlaying={isPlaying}
+          shuffle={shuffle}
+          repeatMode={repeatMode}
+          onSeek={seekTo}
+          onPause={pauseSong}
+          onResume={resumeSong}
+          onNext={playNext}
+          onPrevious={playPrevious}
+          onToggleShuffle={toggleShuffle}
+          onCycleRepeatMode={cycleRepeatMode}
+        />
 
-      {/* 4. Bottom Footer Navigation (Lyrics & Queue) */}
-      <View style={styles.footerRow}>
-        <TouchableOpacity
-          style={styles.lyricsButton}
-          activeOpacity={0.7}
-          onPress={() => setIsLyricsVisible(true)}
-        >
-          <Text style={[styles.footerText, { color: colors.text }]}>
-            Lyrics
-          </Text>
-          <Ionicons
-            name="chevron-up"
-            size={20}
-            color={colors.text}
-            style={{ marginLeft: 6 }}
-          />
-        </TouchableOpacity>
+        {/* 4. Bottom Footer Navigation (Lyrics & Queue) */}
+        <View style={styles.footerRow}>
+          <TouchableOpacity
+            style={styles.lyricsButton}
+            activeOpacity={0.7}
+            onPress={() => setIsLyricsVisible(true)}
+          >
+            <Text style={[styles.footerText, { color: colors.text }]}>
+              Lyrics
+            </Text>
+            <Ionicons
+              name="chevron-up"
+              size={20}
+              color={colors.text}
+              style={{ marginLeft: 6 }}
+            />
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.queueButton}
-          activeOpacity={0.7}
-          onPress={() => router.push("./queue")}
-        >
-          <Ionicons name="list" size={26} color={colors.text} />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.queueButton}
+            activeOpacity={0.7}
+            onPress={() => router.push("./queue")}
+          >
+            <Ionicons name="list" size={26} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        {/* 5. Lyrics Sheet Drawer */}
+        <LyricsModal
+          visible={isLyricsVisible}
+          songTitle={currentSong.title}
+          artist={currentSong.artist}
+          lyrics={currentLyrics}
+          onClose={() => setIsLyricsVisible(false)}
+        />
       </View>
-
-      {/* 5. Lyrics Sheet Drawer */}
-      <LyricsModal
-        visible={isLyricsVisible}
-        songTitle={currentSong.title}
-        artist={currentSong.artist}
-        lyrics={currentLyrics}
-        onClose={() => setIsLyricsVisible(false)}
-      />
-    </View>
+    </GestureHandlerRootView>
   );
 }
 

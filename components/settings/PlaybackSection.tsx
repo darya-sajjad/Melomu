@@ -6,9 +6,9 @@ import { StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 
 interface PlaybackSectionProps {
   gaplessPlayback: boolean;
-  onToggleGapless: (val: boolean) => void;
+  onToggleGapless: (val: boolean) => void | Promise<void>;
   crossfadeDuration: number;
-  onChangeCrossfade: (duration: number) => void;
+  onChangeCrossfade: (duration: number) => void | Promise<void>;
 }
 
 export default function PlaybackSection({

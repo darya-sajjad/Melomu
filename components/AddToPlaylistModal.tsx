@@ -2,7 +2,7 @@ import placeholderIcon from "@/assets/icon.png";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -42,7 +42,9 @@ export default function AddToPlaylistModal({
   const [playlists, setPlaylists] = useState<PlaylistRow[]>([]);
 
   // Resolve target songs array (bulk list or single item)
-  const targetSongs = songs && songs.length > 0 ? songs : song ? [song] : [];
+  const targetSongs = useMemo(() => {
+    return songs && songs.length > 0 ? songs : song ? [song] : [];
+  }, [songs, song]);
 
   const loadPlaylistsForSongs = useCallback(async () => {
     if (targetSongs.length === 0) return;
@@ -91,54 +93,80 @@ export default function AddToPlaylistModal({
     }
   }, [isVisible, targetSongs.length, loadPlaylistsForSongs]);
 
-  const toggleSongsInPlaylist = async (
-    playlistId: string,
-    isCurrentlyAdded: boolean,
-  ) => {
-    if (targetSongs.length === 0) return;
-    try {
-      const db = await dbAsync;
+  const toggleSongsInPlaylist = useCallback(
+    async (playlistId: string, isCurrentlyAdded: boolean) => {
+      if (targetSongs.length === 0) return;
+      try {
+        const db = await dbAsync;
 
-      await db.withTransactionAsync(async () => {
-        if (isCurrentlyAdded) {
-          // Remove targeted songs from playlist
-          for (const item of targetSongs) {
-            await db.runAsync(
-              "DELETE FROM playlist_songs WHERE playlist_id = ? AND song_id = ?",
-              [playlistId, item.id],
-            );
-          }
-        } else {
-          // Add missing songs into playlist
-          const countResult: any = await db.getFirstAsync(
-            "SELECT COUNT(*) as total FROM playlist_songs WHERE playlist_id = ?",
-            [playlistId],
-          );
-          let currentPos = countResult?.total || 0;
-
-          for (const item of targetSongs) {
-            // Check if individual song is already in the playlist to avoid duplicate PK errors
-            const existing = await db.getFirstAsync(
-              "SELECT song_id FROM playlist_songs WHERE playlist_id = ? AND song_id = ?",
-              [playlistId, item.id],
-            );
-
-            if (!existing) {
+        await db.withTransactionAsync(async () => {
+          if (isCurrentlyAdded) {
+            for (const item of targetSongs) {
               await db.runAsync(
-                "INSERT INTO playlist_songs (playlist_id, song_id, position) VALUES (?, ?, ?)",
-                [playlistId, item.id, currentPos],
+                "DELETE FROM playlist_songs WHERE playlist_id = ? AND song_id = ?",
+                [playlistId, item.id],
               );
-              currentPos++;
+            }
+          } else {
+            const countResult: any = await db.getFirstAsync(
+              "SELECT COUNT(*) as total FROM playlist_songs WHERE playlist_id = ?",
+              [playlistId],
+            );
+            let currentPos = countResult?.total || 0;
+
+            for (const item of targetSongs) {
+              const existing = await db.getFirstAsync(
+                "SELECT song_id FROM playlist_songs WHERE playlist_id = ? AND song_id = ?",
+                [playlistId, item.id],
+              );
+
+              if (!existing) {
+                await db.runAsync(
+                  "INSERT INTO playlist_songs (playlist_id, song_id, position) VALUES (?, ?, ?)",
+                  [playlistId, item.id, currentPos],
+                );
+                currentPos++;
+              }
             }
           }
-        }
-      });
+        });
 
-      loadPlaylistsForSongs();
-    } catch (error) {
-      console.error("Failed to toggle songs in playlist:", error);
-    }
-  };
+        loadPlaylistsForSongs();
+      } catch (error) {
+        console.error("Failed to toggle songs in playlist:", error);
+      }
+    },
+    [targetSongs, loadPlaylistsForSongs],
+  );
+
+  const renderPlaylistItem = useCallback(
+    ({ item }: { item: PlaylistRow }) => (
+      <TouchableOpacity
+        activeOpacity={0.7}
+        style={styles.playlistRow}
+        onPress={() => toggleSongsInPlaylist(item.id, item.isAdded)}
+      >
+        <Image
+          source={
+            item.artwork_path ? { uri: item.artwork_path } : placeholderIcon
+          }
+          style={styles.rowArt}
+        />
+        <Text
+          style={[styles.rowName, { color: colors.text }]}
+          numberOfLines={1}
+        >
+          {item.name}
+        </Text>
+        <Ionicons
+          name={item.isAdded ? "checkmark-circle" : "add-circle-outline"}
+          size={24}
+          color={item.isAdded ? colors.primary : colors.textSecondary}
+        />
+      </TouchableOpacity>
+    ),
+    [colors.primary, colors.text, colors.textSecondary, toggleSongsInPlaylist],
+  );
 
   const modalTitleText =
     targetSongs.length > 1
@@ -173,35 +201,7 @@ export default function AddToPlaylistModal({
                 tab first.
               </Text>
             }
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.playlistRow}
-                onPress={() => toggleSongsInPlaylist(item.id, item.isAdded)}
-              >
-                <Image
-                  source={
-                    item.artwork_path
-                      ? { uri: item.artwork_path }
-                      : placeholderIcon
-                  }
-                  style={styles.rowArt}
-                />
-                <Text
-                  style={[styles.rowName, { color: colors.text }]}
-                  numberOfLines={1}
-                >
-                  {item.name}
-                </Text>
-                <Ionicons
-                  name={
-                    item.isAdded ? "checkmark-circle" : "add-circle-outline"
-                  }
-                  size={24}
-                  color={item.isAdded ? colors.primary : colors.textSecondary}
-                />
-              </TouchableOpacity>
-            )}
+            renderItem={renderPlaylistItem}
           />
 
           <TouchableOpacity

@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-    Animated,
-    Easing,
-    LayoutChangeEvent,
-    StyleProp,
-    StyleSheet,
-    Text,
-    TextStyle,
-    View,
+  Animated,
+  Easing,
+  LayoutChangeEvent,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TextStyle,
+  View,
 } from "react-native";
 
 interface ScrollingTextProps {
@@ -57,7 +57,8 @@ export const ScrollingText: React.FC<ScrollingTextProps> = ({
     animation.start();
 
     return () => animation.stop();
-  }, [isOverflowing, textWidth, containerWidth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOverflowing, textWidth, containerWidth, text]);
 
   const onContainerLayout = (e: LayoutChangeEvent) => {
     setContainerWidth(e.nativeEvent.layout.width);

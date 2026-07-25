@@ -35,10 +35,8 @@ export default function MiniPlayer() {
     }
   };
 
-  const progressPercent = Math.min(
-    Math.max((position / duration) * 100, 0),
-    100,
-  );
+  const progressPercent =
+    duration > 0 ? Math.min(Math.max((position / duration) * 100, 0), 100) : 0;
 
   // Base resting bottom offset when TabBar is visible
   const baseBottom = TAB_BAR_HEIGHT + (Platform.OS === "ios" ? 10 : 8);

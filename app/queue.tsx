@@ -2,8 +2,7 @@ import placeholderIcon from "@/assets/icon.png";
 import { useAudio } from "@/constants/AudioContext";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Image,
   Platform,
@@ -19,7 +18,6 @@ import DraggableFlatList, {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function QueueScreen() {
-  const router = useRouter();
   const { colors } = useTheme();
   const {
     queue,
@@ -51,70 +49,68 @@ export default function QueueScreen() {
     setSelectedIds([]);
   };
 
-  const renderQueueItem = ({
-    item,
-    getIndex,
-    drag,
-    isActive,
-  }: RenderItemParams<any>) => {
-    const relIndex = getIndex();
-    if (relIndex === undefined) return null;
-    const actualIndex = currentIndex + 1 + relIndex;
-    const isSelected = selectedIds.includes(item.id);
+  const renderQueueItem = useCallback(
+    ({ item, getIndex, drag, isActive }: RenderItemParams<any>) => {
+      const relIndex = getIndex();
+      if (relIndex === undefined) return null;
+      const actualIndex = currentIndex + 1 + relIndex;
+      const isSelected = selectedIds.includes(item.id);
 
-    return (
-      <ScaleDecorator>
-        <View
-          style={[
-            styles.trackRow,
-            isActive && { backgroundColor: colors.surface, borderRadius: 10 },
-          ]}
-        >
-          <TouchableOpacity
-            onPress={() => toggleSelect(item.id)}
-            style={styles.radioBtn}
+      return (
+        <ScaleDecorator>
+          <View
+            style={[
+              styles.trackRow,
+              isActive && { backgroundColor: colors.surface, borderRadius: 10 },
+            ]}
           >
-            <Ionicons
-              name={isSelected ? "checkmark-circle" : "ellipse-outline"}
-              size={22}
-              color={isSelected ? colors.primary : colors.textSecondary}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.trackMeta}
-            onPress={() => playFromQueue(actualIndex)}
-          >
-            <Text
-              style={[styles.trackTitle, { color: colors.text }]}
-              numberOfLines={1}
+            <TouchableOpacity
+              onPress={() => toggleSelect(item.id)}
+              style={styles.radioBtn}
             >
-              {item.title}
-            </Text>
-            <Text
-              style={[styles.trackArtist, { color: colors.textSecondary }]}
-              numberOfLines={1}
-            >
-              {item.artist}
-            </Text>
-          </TouchableOpacity>
+              <Ionicons
+                name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                size={22}
+                color={isSelected ? colors.primary : colors.textSecondary}
+              />
+            </TouchableOpacity>
 
-          {/* Drag Handle */}
-          <TouchableOpacity
-            onLongPress={drag}
-            delayLongPress={100}
-            style={styles.dragHandle}
-          >
-            <Ionicons
-              name="reorder-two"
-              size={26}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-        </View>
-      </ScaleDecorator>
-    );
-  };
+            <TouchableOpacity
+              style={styles.trackMeta}
+              onPress={() => playFromQueue(actualIndex)}
+            >
+              <Text
+                style={[styles.trackTitle, { color: colors.text }]}
+                numberOfLines={1}
+              >
+                {item.title}
+              </Text>
+              <Text
+                style={[styles.trackArtist, { color: colors.textSecondary }]}
+                numberOfLines={1}
+              >
+                {item.artist}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Drag Handle */}
+            <TouchableOpacity
+              onLongPress={drag}
+              delayLongPress={100}
+              style={styles.dragHandle}
+            >
+              <Ionicons
+                name="reorder-two"
+                size={26}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
+        </ScaleDecorator>
+      );
+    },
+    [colors, currentIndex, selectedIds, playFromQueue],
+  );
 
   const renderHeader = () => (
     <View>
@@ -192,7 +188,15 @@ export default function QueueScreen() {
 
       {/* Bottom Action Bar (Removed "Add to Queue") */}
       {selectedIds.length > 0 && (
-        <View style={[styles.bottomBar, { borderTopColor: colors.border }]}>
+        <View
+          style={[
+            styles.bottomBar,
+            {
+              backgroundColor: colors.surface + "F2",
+              borderTopColor: colors.border,
+            },
+          ]}
+        >
           <TouchableOpacity onPress={handleBatchRemove}>
             <Text style={[styles.bottomBarAction, { color: colors.primary }]}>
               Remove ({selectedIds.length})

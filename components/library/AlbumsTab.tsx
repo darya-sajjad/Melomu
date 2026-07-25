@@ -3,7 +3,7 @@ import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
   FlatList,
@@ -14,6 +14,40 @@ import {
   View,
 } from "react-native";
 import { Song } from "./SongsTab";
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  listPadding: {
+    paddingHorizontal: 16,
+    paddingBottom: 100,
+  },
+  columnWrapper: {
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  albumCard: {},
+  albumArt: {
+    borderRadius: 16,
+    marginBottom: 8,
+  },
+  albumTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  albumArtist: {
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 2,
+  },
+  emptyText: {
+    textAlign: "center",
+    marginTop: 40,
+    fontSize: 15,
+  },
+});
 
 interface AlbumsTabProps {
   songs: Song[];
@@ -104,6 +138,63 @@ export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
       a.artist.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  // AFTER:
+  const renderAlbumItem = useCallback(
+    ({ item }: { item: AlbumGroup }) => {
+      const firstTrackWithArt = item.tracks.find(
+        (t) => t.custom_artwork_path && t.custom_artwork_path.trim() !== "",
+      );
+
+      const coverUri =
+        albumArtworksMap[item.name] || firstTrackWithArt?.custom_artwork_path;
+
+      return (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[styles.albumCard, { width: CARD_WIDTH }]}
+          onPress={() =>
+            router.push({
+              pathname: "/album",
+              params: { name: item.name },
+            })
+          }
+        >
+          <Image
+            source={coverUri ? { uri: coverUri } : placeholderIcon}
+            style={[
+              styles.albumArt,
+              {
+                width: CARD_WIDTH,
+                height: CARD_WIDTH,
+                backgroundColor: colors.surface,
+              },
+            ]}
+            resizeMode="cover"
+          />
+          <Text
+            style={[styles.albumTitle, { color: colors.text }]}
+            numberOfLines={1}
+          >
+            {item.name}
+          </Text>
+          <Text
+            style={[styles.albumArtist, { color: colors.textSecondary }]}
+            numberOfLines={1}
+          >
+            {item.artist}
+          </Text>
+        </TouchableOpacity>
+      );
+    },
+    [
+      albumArtworksMap,
+      colors.surface,
+      colors.text,
+      colors.textSecondary,
+      router,
+    ],
+  );
+
   return (
     <View style={styles.container}>
       <FlatList<AlbumGroup>
@@ -117,95 +208,8 @@ export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
             No albums found.
           </Text>
         }
-        renderItem={({ item }) => {
-          // Priority Order:
-          // 1. Direct match in album_artworks table
-          // 2. Fallback to song's custom_artwork_path
-          const firstTrackWithArt = item.tracks.find(
-            (t) => t.custom_artwork_path && t.custom_artwork_path.trim() !== "",
-          );
-
-          const coverUri =
-            albumArtworksMap[item.name] ||
-            firstTrackWithArt?.custom_artwork_path;
-
-          return (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.albumCard, { width: CARD_WIDTH }]}
-              onPress={() =>
-                router.push({
-                  pathname: "/album",
-                  params: { name: item.name },
-                })
-              }
-            >
-              <Image
-                source={
-                  coverUri
-                    ? { uri: `${coverUri}?t=${Date.now()}` }
-                    : placeholderIcon
-                }
-                style={[
-                  styles.albumArt,
-                  {
-                    width: CARD_WIDTH,
-                    height: CARD_WIDTH,
-                    backgroundColor: colors.surface,
-                  },
-                ]}
-                resizeMode="cover"
-              />
-              <Text
-                style={[styles.albumTitle, { color: colors.text }]}
-                numberOfLines={1}
-              >
-                {item.name}
-              </Text>
-              <Text
-                style={[styles.albumArtist, { color: colors.textSecondary }]}
-                numberOfLines={1}
-              >
-                {item.artist}
-              </Text>
-            </TouchableOpacity>
-          );
-        }}
+        renderItem={renderAlbumItem}
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  listPadding: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
-  },
-  columnWrapper: {
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  albumCard: {},
-  albumArt: {
-    borderRadius: 16,
-    marginBottom: 8,
-  },
-  albumTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  albumArtist: {
-    fontSize: 13,
-    textAlign: "center",
-    marginTop: 2,
-  },
-  emptyText: {
-    textAlign: "center",
-    marginTop: 40,
-    fontSize: 15,
-  },
-});

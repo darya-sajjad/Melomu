@@ -2,14 +2,14 @@ import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Props {
   visible: boolean;
@@ -27,19 +27,25 @@ export default function LyricsModal({
   onClose,
 }: Props) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
       transparent={true}
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.lyricsModalWrapper}>
         <View
           style={[
             styles.lyricsHeaderNav,
-            { backgroundColor: colors.background },
+            {
+              backgroundColor: colors.background,
+              height: insets.top + 56,
+              paddingTop: insets.top + 8,
+            },
           ]}
         >
           <TouchableOpacity
@@ -92,10 +98,8 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   lyricsHeaderNav: {
-    height: Platform.OS === "ios" ? 110 : 95,
     justifyContent: "center",
     paddingHorizontal: 24,
-    paddingTop: Platform.OS === "ios" ? 48 : 24,
   },
   backButtonTouchable: {
     width: 44,
