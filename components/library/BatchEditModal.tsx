@@ -1,7 +1,9 @@
+import { useSelectionMode } from "@/constants/Selectionmodecontext";
 import { useTheme } from "@/constants/ThemeContext";
 import React, { useEffect, useState } from "react";
 import {
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -26,6 +28,7 @@ export default function BatchEditModal({
   onSubmit,
 }: Props) {
   const { colors } = useTheme();
+  const { setIsSelectionModeActive } = useSelectionMode();
   const [value, setValue] = useState("");
 
   useEffect(() => {
@@ -35,13 +38,14 @@ export default function BatchEditModal({
   }, [visible]);
 
   const handleClose = () => {
-    onClose(); // Parent screen handles setting setIsSelectionModeActive(false)
+    setIsSelectionModeActive(false);
+    onClose();
   };
 
   const handleSave = () => {
     if (value.trim()) {
       onSubmit(value.trim());
-      onClose();
+      handleClose();
     }
   };
 
@@ -56,56 +60,62 @@ export default function BatchEditModal({
       statusBarTranslucent
     >
       <Pressable style={styles.overlay} onPress={handleClose}>
-        <Pressable
+        <View
           style={[
-            styles.container,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            styles.modalBox,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              // Fixed low position (right near the bottom where the navbar usually sits)
+              marginBottom: Platform.OS === "ios" ? 30 : 20,
+            },
           ]}
-          onPress={(e) => e.stopPropagation()}
         >
-          <Text style={[styles.title, { color: colors.text }]}>
-            Edit {type === "album" ? "Album" : "Artist"} ({count} songs)
-          </Text>
+          <Pressable onPress={(e) => e.stopPropagation()}>
+            <Text style={[styles.title, { color: colors.text }]}>
+              Edit {type === "album" ? "Album" : "Artist"} ({count} songs)
+            </Text>
 
-          <TextInput
-            style={[
-              styles.input,
-              {
-                color: colors.text,
-                borderColor: colors.border,
-                backgroundColor: colors.background,
-              },
-            ]}
-            placeholder={`Enter new ${type} name...`}
-            placeholderTextColor={colors.textSecondary}
-            value={value}
-            onChangeText={setValue}
-            autoFocus
-          />
-
-          <View style={styles.btnRow}>
-            <TouchableOpacity
-              style={[styles.btn, styles.cancelBtn]}
-              onPress={handleClose}
-            >
-              <Text style={{ color: colors.textSecondary }}>Cancel</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
+            <TextInput
               style={[
-                styles.btn,
+                styles.input,
                 {
-                  backgroundColor: colors.primary,
-                  opacity: value.trim() ? 1 : 0.5,
+                  color: colors.text,
+                  borderColor: colors.border,
+                  backgroundColor: colors.background,
                 },
               ]}
-              disabled={!value.trim()}
-              onPress={handleSave}
-            >
-              <Text style={styles.saveText}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        </Pressable>
+              placeholder={`Enter new ${type} name...`}
+              placeholderTextColor={colors.textSecondary}
+              value={value}
+              onChangeText={setValue}
+              autoFocus
+            />
+
+            <View style={styles.btnRow}>
+              <TouchableOpacity
+                style={[styles.btn, styles.cancelBtn]}
+                onPress={handleClose}
+              >
+                <Text style={{ color: colors.textSecondary }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.btn,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: value.trim() ? 1 : 0.5,
+                  },
+                ]}
+                disabled={!value.trim()}
+                onPress={handleSave}
+              >
+                <Text style={styles.saveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </View>
       </Pressable>
     </Modal>
   );
@@ -115,11 +125,11 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
+    justifyContent: "flex-end",
     alignItems: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
   },
-  container: {
+  modalBox: {
     width: "100%",
     borderRadius: 20,
     padding: 20,

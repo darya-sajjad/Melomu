@@ -325,7 +325,6 @@ export default function LibraryScreen() {
         )}
       </View>
 
-      {/* Batch Name Prompt Modal */}
       <BatchEditModal
         visible={isBatchEditModalVisible}
         type={batchEditType}
@@ -389,8 +388,7 @@ const styles = StyleSheet.create({
   },
   actionBar: {
     position: "absolute",
-    // Positioned above the lowered MiniPlayer
-    bottom: Platform.OS === "ios" ? 85 : 75,
+    bottom: Platform.OS === "ios" ? 35 : 75,
     left: 20,
     right: 20,
     height: 56,
