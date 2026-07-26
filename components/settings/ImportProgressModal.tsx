@@ -26,7 +26,7 @@ export default function ImportProgressModal({
         <View
           style={[
             styles.card,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            { backgroundColor: colors.surface, borderColor: colors.primary },
           ]}
         >
           <ActivityIndicator size="large" color={colors.primary} />
@@ -42,9 +42,8 @@ export default function ImportProgressModal({
             {currentTrackName || "Reading files..."}
           </Text>
 
-          {/* Progress Bar Container */}
           <View
-            style={[styles.progressBarBg, { backgroundColor: colors.border }]}
+            style={[styles.progressBarBg, { backgroundColor: colors.primary }]}
           >
             <View
               style={[

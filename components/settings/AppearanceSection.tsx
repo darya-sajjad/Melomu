@@ -1,5 +1,5 @@
 import ThemePresetModal, {
-    ThemePresetOption,
+  ThemePresetOption,
 } from "@/components/settings/ThemePresetModal";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -36,10 +36,9 @@ export default function AppearanceSection() {
       <View
         style={[
           styles.cardContainer,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          { backgroundColor: colors.surface, borderColor: colors.primary },
         ]}
       >
-        {/* Dark Mode */}
         <View style={styles.rowItem}>
           <Text style={[styles.rowTitle, { color: colors.text }]}>
             Dark Mode
@@ -47,13 +46,12 @@ export default function AppearanceSection() {
           <Switch
             value={theme === "dark"}
             onValueChange={toggleTheme}
-            trackColor={{ false: colors.border, true: colors.primary }}
+            trackColor={{ false: colors.surface, true: colors.primary }}
           />
         </View>
 
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <View style={[styles.divider, { backgroundColor: colors.surface }]} />
 
-        {/* Theme Preset Trigger */}
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.rowItem}
@@ -67,15 +65,10 @@ export default function AppearanceSection() {
               {getPresetLabel(activePreset)}
             </Text>
           </View>
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color={colors.textSecondary}
-          />
+          <Ionicons name="chevron-forward" size={18} color={colors.text} />
         </TouchableOpacity>
       </View>
 
-      {/* Preset Modal */}
       <ThemePresetModal
         visible={presetModalVisible}
         selectedPreset={activePreset}

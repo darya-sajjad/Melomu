@@ -37,7 +37,7 @@ export default function DeveloperDiagnosticsSection({
           styles.dashedCard,
           {
             backgroundColor: colors.surface,
-            borderColor: colors.border,
+            borderColor: colors.primary,
             borderStyle: Platform.OS === "ios" ? "dashed" : "solid",
           },
         ]}

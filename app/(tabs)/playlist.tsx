@@ -29,7 +29,10 @@ import DraggableFlatList, {
   ScaleDecorator,
 } from "react-native-draggable-flatlist";
 import { TouchableOpacity as RNGHTouchableOpacity } from "react-native-gesture-handler";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
@@ -239,7 +242,10 @@ export default function PlaylistDetailScreen() {
     const titleText = playlistMeta?.name || title || "Playlist";
 
     return (
-      <View style={styles.headerContainer}>
+      <SafeAreaView
+        style={[styles.headerContainer, { backgroundColor: colors.background }]}
+        edges={["top", "left", "right"]}
+      >
         <View style={styles.navRow}>
           <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
             <Ionicons name="arrow-back" size={26} color={colors.text} />
@@ -285,7 +291,7 @@ export default function PlaylistDetailScreen() {
             ? `${selectedIds.size} selected`
             : `${songs.length} ${songs.length === 1 ? "Song" : "Songs"}`}
         </Text>
-      </View>
+      </SafeAreaView>
     );
   }, [
     colors,
@@ -605,12 +611,17 @@ export default function PlaylistDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  loadingCenter: { flex: 1, justifyContent: "center", alignItems: "center" },
-  listPadding: { paddingBottom: 140 },
+  loadingCenter: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  listPadding: {
+    paddingBottom: 140,
+  },
   headerContainer: {
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 48,
     marginBottom: 24,
   },
   navRow: {
@@ -621,7 +632,10 @@ const styles = StyleSheet.create({
     height: 48,
     marginBottom: 16,
   },
-  exitModeText: { fontSize: 15, fontWeight: "700" },
+  exitModeText: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
   artworkWrapper: {
     alignItems: "center",
     justifyContent: "center",
@@ -632,7 +646,11 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 4,
   },
-  mainCdArt: { width: width * 0.56, height: width * 0.56, borderRadius: 16 },
+  mainCdArt: {
+    width: width * 0.56,
+    height: width * 0.56,
+    borderRadius: 16,
+  },
   playlistMainTitle: {
     fontSize: 26,
     fontWeight: "700",
@@ -640,7 +658,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     letterSpacing: 0.2,
   },
-  playlistDescription: { fontSize: 14, fontWeight: "500", textAlign: "center" },
+  playlistDescription: {
+    fontSize: 14,
+    fontWeight: "500",
+    textAlign: "center",
+  },
   emptyText: {
     textAlign: "center",
     marginTop: 40,
@@ -653,11 +675,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 10,
   },
-  selectIcon: { marginRight: 14 },
-  songRowArt: { width: 48, height: 48, borderRadius: 8, marginRight: 16 },
-  metaTextContainer: { flex: 1, paddingRight: 8 },
-  songTitleLabel: { fontSize: 15, fontWeight: "600", marginBottom: 3 },
-  songArtistLabel: { fontSize: 13 },
+  selectIcon: {
+    marginRight: 14,
+  },
+  songRowArt: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 16,
+  },
+  metaTextContainer: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  songTitleLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 3,
+  },
+  songArtistLabel: {
+    fontSize: 13,
+  },
   selectBar: {
     position: "absolute",
     bottom: 96,
@@ -671,14 +709,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  selectCountText: { fontSize: 14, fontWeight: "600" },
+  selectCountText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
   removeSelectedBtn: {
     paddingVertical: 8,
     paddingHorizontal: 18,
     borderRadius: 10,
   },
-  removeSelectedText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
-  menuBackdrop: { flex: 1 },
+  removeSelectedText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  menuBackdrop: {
+    flex: 1,
+  },
   menuCard: {
     position: "absolute",
     right: 20,
@@ -698,5 +745,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
   },
-  menuItemText: { fontSize: 14, fontWeight: "600", marginLeft: 10 },
+  menuItemText: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 10,
+  },
 });

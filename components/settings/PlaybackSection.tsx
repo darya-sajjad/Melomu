@@ -32,10 +32,9 @@ export default function PlaybackSection({
       <View
         style={[
           styles.cardContainer,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          { backgroundColor: colors.surface, borderColor: colors.primary },
         ]}
       >
-        {/* Gapless Playback Toggle */}
         <View style={styles.rowItem}>
           <View style={styles.rowTextGroup}>
             <Text style={[styles.rowTitle, { color: colors.text }]}>
@@ -48,13 +47,12 @@ export default function PlaybackSection({
           <Switch
             value={gaplessPlayback}
             onValueChange={onToggleGapless}
-            trackColor={{ false: colors.border, true: colors.primary }}
+            trackColor={{ false: colors.surface, true: colors.primary }}
           />
         </View>
 
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <View style={[styles.divider, { backgroundColor: colors.surface }]} />
 
-        {/* Crossfade Selector */}
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.rowItem}
@@ -68,11 +66,7 @@ export default function PlaybackSection({
               {crossfadeDuration > 0 ? `On (${crossfadeDuration}s)` : "Off"}
             </Text>
           </View>
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color={colors.textSecondary}
-          />
+          <Ionicons name="chevron-forward" size={18} color={colors.text} />
         </TouchableOpacity>
       </View>
 
