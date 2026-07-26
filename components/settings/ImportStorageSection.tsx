@@ -26,10 +26,9 @@ export default function ImportStorageSection({
       <View
         style={[
           styles.cardContainer,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          { backgroundColor: colors.surface, borderColor: colors.primary },
         ]}
       >
-        {/* Scan Music Folder */}
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.rowItem}

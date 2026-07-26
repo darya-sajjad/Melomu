@@ -13,7 +13,6 @@ import {
   View,
 } from "react-native";
 
-// List of open source libraries used in Melomu
 const OPEN_SOURCE_LICENSES = [
   {
     name: "Expo AV",
@@ -46,7 +45,6 @@ export default function AboutSection() {
   const { colors } = useTheme();
   const [showLicensesModal, setShowLicensesModal] = useState(false);
 
-  // Dynamic version from app.json
   const appVersion = Constants.expoConfig?.version || "1.0.0";
   const buildNumber = Constants.expoConfig?.android?.versionCode || "1";
 
@@ -76,10 +74,9 @@ export default function AboutSection() {
       <View
         style={[
           styles.cardContainer,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          { backgroundColor: colors.surface, borderColor: colors.primary },
         ]}
       >
-        {/* App Version Row */}
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.rowItem}
@@ -96,9 +93,8 @@ export default function AboutSection() {
           <Ionicons name="sparkles-outline" size={20} color={colors.primary} />
         </TouchableOpacity>
 
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <View style={[styles.divider, { backgroundColor: colors.surface }]} />
 
-        {/* Source Code / GitHub Link */}
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.rowItem}
@@ -115,9 +111,8 @@ export default function AboutSection() {
           <Ionicons name="logo-github" size={20} color={colors.text} />
         </TouchableOpacity>
 
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <View style={[styles.divider, { backgroundColor: colors.surface }]} />
 
-        {/* Interactive Open Source Licenses Modal Button */}
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.rowItem}
@@ -139,7 +134,6 @@ export default function AboutSection() {
         </TouchableOpacity>
       </View>
 
-      {/* Licenses Modal */}
       <Modal
         animationType="slide"
         visible={showLicensesModal}
@@ -247,7 +241,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "700",
   },
   licenseCard: {
@@ -263,7 +257,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   libraryName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
   },
   licenseTag: {

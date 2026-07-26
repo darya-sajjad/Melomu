@@ -19,6 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type CategoryTab = "songs" | "albums" | "artists";
 
@@ -170,7 +171,10 @@ export default function LibraryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.surface }]}
+      edges={["top", "left", "right"]}
+    >
       <LibraryTopSection
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -320,14 +324,13 @@ export default function LibraryScreen() {
           exitSelectMode();
         }}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "ios" ? 70 : 30,
   },
   loadingCenter: {
     flex: 1,

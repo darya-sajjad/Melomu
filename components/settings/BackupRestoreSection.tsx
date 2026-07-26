@@ -33,10 +33,9 @@ export default function BackupRestoreSection() {
       <View
         style={[
           styles.cardContainer,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          { backgroundColor: colors.surface, borderColor: colors.primary },
         ]}
       >
-        {/* Export / Backup Database */}
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.rowItem}
@@ -57,9 +56,8 @@ export default function BackupRestoreSection() {
           />
         </TouchableOpacity>
 
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <View style={[styles.divider, { backgroundColor: colors.surface }]} />
 
-        {/* Import / Restore Database */}
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.rowItem}

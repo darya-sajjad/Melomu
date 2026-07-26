@@ -15,7 +15,8 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { parseBuffer } from "music-metadata";
 import React, { useEffect, useState } from "react";
-import { Alert, Platform, ScrollView, StyleSheet, Text } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
@@ -255,62 +256,75 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView
+    <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.scrollPadding}
+      edges={["top", "left", "right"]}
     >
       <Text style={[styles.screenHeaderTitle, { color: colors.text }]}>
         Settings
       </Text>
 
-      <AppearanceSection />
+      <View style={[styles.thickDivider, { borderColor: colors.primary }]} />
 
-      <PlaybackSection
-        gaplessPlayback={gaplessPlayback}
-        onToggleGapless={setGaplessPlayback}
-        crossfadeDuration={crossfadeDuration}
-        onChangeCrossfade={setCrossfadeDuration}
-      />
+      <ScrollView
+        style={[styles.Scrollcontainer, { backgroundColor: colors.background }]}
+        contentContainerStyle={styles.scrollPadding}
+      >
+        <AppearanceSection />
 
-      <ImportStorageSection
-        onScanFolder={handleBatchFolderScan}
-        isScanning={isScanning}
-      />
+        <PlaybackSection
+          gaplessPlayback={gaplessPlayback}
+          onToggleGapless={setGaplessPlayback}
+          crossfadeDuration={crossfadeDuration}
+          onChangeCrossfade={setCrossfadeDuration}
+        />
 
-      <BackupRestoreSection />
+        <ImportStorageSection
+          onScanFolder={handleBatchFolderScan}
+          isScanning={isScanning}
+        />
 
-      <DeveloperDiagnosticsSection
-        dbSongCount={dbSongCount}
-        storageSizeMB={storageSizeMB}
-        onNuke={handleNukeDatabaseCache}
-      />
+        <BackupRestoreSection />
 
-      <AboutSection />
+        <DeveloperDiagnosticsSection
+          dbSongCount={dbSongCount}
+          storageSizeMB={storageSizeMB}
+          onNuke={handleNukeDatabaseCache}
+        />
 
-      <ImportProgressModal
-        visible={isScanning}
-        currentTrackName={scanProgress.currentTrack}
-        processedCount={scanProgress.processed}
-        totalCount={scanProgress.total}
-      />
-    </ScrollView>
+        <AboutSection />
+
+        <ImportProgressModal
+          visible={isScanning}
+          currentTrackName={scanProgress.currentTrack}
+          processedCount={scanProgress.processed}
+          totalCount={scanProgress.total}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "ios" ? 50 : 30,
+  },
+  Scrollcontainer: {
+    flex: 1,
   },
   scrollPadding: {
     paddingHorizontal: 16,
     paddingBottom: 140,
   },
   screenHeaderTitle: {
-    fontSize: 26,
+    fontSize: 23,
     fontWeight: "700",
-    marginBottom: 16,
-    marginTop: 10,
+    marginBottom: 12,
     textAlign: "center",
+  },
+  thickDivider: {
+    borderWidth: 1,
+    marginBottom: 0,
+    width: "100%",
   },
 });
