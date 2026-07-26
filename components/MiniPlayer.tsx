@@ -38,10 +38,8 @@ export default function MiniPlayer() {
   const progressPercent =
     duration > 0 ? Math.min(Math.max((position / duration) * 100, 0), 100) : 0;
 
-  // Base resting bottom offset when TabBar is visible
   const baseBottom = TAB_BAR_HEIGHT + (Platform.OS === "ios" ? 10 : 8);
 
-  // Map tabBarTranslateY to push the MiniPlayer entirely off-screen (150px down) when selection mode is active
   const translateY = tabBarTranslateY.interpolate({
     inputRange: [0, TAB_BAR_HEIGHT],
     outputRange: [0, TAB_BAR_HEIGHT + 150],
@@ -63,10 +61,9 @@ export default function MiniPlayer() {
         onPress={() => router.push("/player")}
         style={[
           styles.content,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          { backgroundColor: colors.surface, borderColor: colors.surface },
         ]}
       >
-        {/* Left Block: Album Thumbnail Artwork */}
         <Image
           source={
             currentSong.custom_artwork_path
@@ -76,7 +73,6 @@ export default function MiniPlayer() {
           style={styles.artwork}
         />
 
-        {/* Middle Block: Labels + Progress Bar Stack */}
         <View style={styles.metaContainer}>
           <View style={styles.textRow}>
             <View
@@ -96,15 +92,14 @@ export default function MiniPlayer() {
             </View>
           </View>
 
-          {/* Progress Tracker */}
           <View
-            style={[styles.progressTrack, { backgroundColor: colors.border }]}
+            style={[styles.progressTrack, { backgroundColor: colors.surface }]}
           >
             <View
               style={[
                 styles.progressFill,
                 {
-                  backgroundColor: colors.primary || colors.background,
+                  backgroundColor: colors.primary || colors.surface,
                   width: `${progressPercent}%`,
                 },
               ]}
@@ -112,14 +107,13 @@ export default function MiniPlayer() {
           </View>
         </View>
 
-        {/* Right Block: Play/Pause Button */}
         <TouchableOpacity
           onPress={handlePlaybackToggle}
           style={styles.playButton}
           activeOpacity={0.7}
         >
           <Ionicons
-            name={isPlaying ? "pause-outline" : "play-outline"}
+            name={isPlaying ? "pause" : "play"}
             size={24}
             color={colors.text}
           />
@@ -132,7 +126,7 @@ export default function MiniPlayer() {
 const styles = StyleSheet.create({
   wrapper: {
     position: "absolute",
-    width: "94%",
+    width: "95%",
     alignSelf: "center",
     zIndex: 99,
   },
@@ -140,8 +134,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     borderWidth: 1,
     borderRadius: 14,
     elevation: 8,
@@ -151,9 +145,9 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   artwork: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
+    width: 47,
+    height: 47,
+    borderRadius: 9,
     marginRight: 12,
   },
   metaContainer: {
@@ -170,8 +164,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   title: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "500",
   },
   progressTrack: {
     height: 4,
