@@ -363,7 +363,11 @@ export default function PlaylistDetailScreen() {
             style={styles.selectIcon}
           />
           <Image
-            source={placeholderIcon}
+            source={
+              item.custom_artwork_path
+                ? { uri: item.custom_artwork_path }
+                : placeholderIcon
+            }
             style={[styles.songRowArt, { backgroundColor: colors.surface }]}
             resizeMode="cover"
           />
@@ -403,7 +407,11 @@ export default function PlaylistDetailScreen() {
             style={styles.selectIcon}
           />
           <Image
-            source={placeholderIcon}
+            source={
+              item.custom_artwork_path
+                ? { uri: item.custom_artwork_path }
+                : placeholderIcon
+            }
             style={[styles.songRowArt, { backgroundColor: colors.surface }]}
             resizeMode="cover"
           />

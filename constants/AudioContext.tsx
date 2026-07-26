@@ -89,6 +89,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const repeatModeRef = useRef(repeatMode);
   const userQueueCountRef = useRef(0);
   const fadeCancelRef = useRef(false);
+  const isTransitioningRef = useRef(false);
 
   // Synchronize internal refs with state for UI components
   const updateQueueState = (newQueue: Song[], newIndex: number) => {
@@ -131,24 +132,23 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     await AsyncStorage.setItem("setting-gapless", JSON.stringify(enabled));
   };
 
+  // AFTER:
   const preloadNextTrack = async () => {
     const list = queueRef.current;
-    if (!list.length || isPreloadingRef.current) return;
+    if (!list.length || isPreloadingRef.current || isTransitioningRef.current)
+      return;
 
     const nextIndex = indexRef.current + 1;
-    // Don't preload if out of bounds (unless repeat all is enabled)
     if (nextIndex >= list.length && repeatModeRef.current !== "all") return;
 
     const targetIndex = nextIndex >= list.length ? 0 : nextIndex;
 
-    // Skip if already preloaded
     if (preloadedIndexRef.current === targetIndex && nextSoundRef.current)
       return;
 
     try {
       isPreloadingRef.current = true;
 
-      // Clean up old preloaded instance if any
       if (nextSoundRef.current) {
         await nextSoundRef.current.unloadAsync();
         nextSoundRef.current = null;
@@ -156,7 +156,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const nextSong = list[targetIndex];
 
-      // Create new sound instance in memory without starting playback
       const { sound } = await Audio.Sound.createAsync(
         { uri: nextSong.file_path },
         { shouldPlay: false, volume: 1.0 },
@@ -266,20 +265,46 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  // AFTER:
   const loadAndPlayIndex = async (index: number) => {
+    if (isTransitioningRef.current) {
+      console.log("⏳ Blocked: transition already in progress");
+      return;
+    }
+
     const list = queueRef.current;
     if (!list.length || index < 0 || index >= list.length) return;
 
+    isTransitioningRef.current = true;
     const song = list[index];
     updateQueueState(queueRef.current, index);
 
     try {
+      fadeCancelRef.current = true;
+
       const oldSound = soundRef.current;
+
+      // 1. IMMEDIATELY stop old sound to prevent overlap / ghost audio
+      if (oldSound) {
+        try {
+          await oldSound.stopAsync();
+        } catch {
+          // Already stopped or unloaded
+        }
+        // Detach its callback so didJustFinish never fires after we leave
+        oldSound.setOnPlaybackStatusUpdate(() => {});
+      }
+
+      // 2. Only kill preload if it's NOT the song we're about to play
+      if (nextSoundRef.current && preloadedIndexRef.current !== index) {
+        nextSoundRef.current.unloadAsync().catch(() => {});
+        nextSoundRef.current = null;
+        preloadedIndexRef.current = -1;
+      }
+
       let soundToPlay: Audio.Sound;
       let usedPreload = false;
 
-      //cancel any ongoing crossfade
-      fadeCancelRef.current = true;
       if (
         gaplessPlayback &&
         preloadedIndexRef.current === index &&
@@ -291,12 +316,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         usedPreload = true;
         await soundToPlay.playAsync();
       } else {
-        // Discard a stale (wrong-index) preload if one exists
-        if (nextSoundRef.current) {
-          nextSoundRef.current.unloadAsync().catch(() => {});
-          nextSoundRef.current = null;
-          preloadedIndexRef.current = -1;
-        }
         const initialVolume = crossfadeDuration > 0 ? 0.1 : 1.0;
         const { sound } = await Audio.Sound.createAsync(
           { uri: song.file_path },
@@ -310,26 +329,21 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       setCurrentSong(song);
       setPosition(0);
 
-      // 2. NOW clean up the old sound, without blocking playback of the new one.
+      // 3. Unload old sound now that new one is safely playing
       if (oldSound) {
-        if (crossfadeDuration > 0 && isPlaying) {
-          fadeVolume(oldSound, 1.0, 0.0, crossfadeDuration).then(() => {
-            oldSound.unloadAsync().catch(() => {});
-          });
-        } else {
-          oldSound.unloadAsync().catch(() => {});
-        }
+        oldSound.unloadAsync().catch(() => {});
       }
 
-      // Only fade the new track in if we're not gapless-preloaded at full volume already
+      // 4. Fade in new track (only if not gapless-preloaded at full volume)
       if (crossfadeDuration > 0 && !usedPreload) {
+        fadeCancelRef.current = false;
         fadeVolume(soundToPlay, 0.1, 1.0, crossfadeDuration);
       }
 
       await loadOfflineCachedLyrics(song.id);
 
       soundToPlay.setOnPlaybackStatusUpdate((status) => {
-        if (!status.isLoaded) return;
+        if (!status.isLoaded || isTransitioningRef.current) return;
 
         setPosition(status.positionMillis);
         if (status.durationMillis) setDuration(status.durationMillis);
@@ -353,10 +367,15 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       });
     } catch (error) {
       console.error("Playback Error:", error);
+      setIsPlaying(false);
+    } finally {
+      isTransitioningRef.current = false;
     }
   };
 
   const advance = (step: number, wrap: boolean) => {
+    if (isTransitioningRef.current) return;
+
     const list = queueRef.current;
     if (!list.length) return;
 
@@ -375,11 +394,23 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     loadAndPlayIndex(next);
   };
 
+  // AFTER:
   const playSong = async (song: Song, songList?: Song[]) => {
+    if (isTransitioningRef.current) {
+      console.log("⏳ Blocked playSong: transition in progress");
+      return;
+    }
+
+    // Kill any stale preload to prevent ghost audio
+    if (nextSoundRef.current) {
+      nextSoundRef.current.unloadAsync().catch(() => {});
+      nextSoundRef.current = null;
+      preloadedIndexRef.current = -1;
+    }
+
     const baseList = songList && songList.length ? songList : [song];
     originalQueueRef.current = baseList;
 
-    // 1. Build the fresh base playlist queue starting from the tapped song
     const baseQueue = shuffleRef.current
       ? buildShuffledQueue(baseList, song)
       : baseList;
@@ -387,7 +418,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     const tappedIndex = baseQueue.findIndex((s) => s.id === song.id);
     const validIndex = tappedIndex === -1 ? 0 : tappedIndex;
 
-    // 2. Extract remaining manually queued songs from the previous queue
     const remainingUserQueue =
       userQueueCountRef.current > 0
         ? queueRef.current.slice(
@@ -396,7 +426,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
           )
         : [];
 
-    // 3. Reconstruct context: [Tapped Song] -> [Preserved Manual Queue] -> [Rest of Playlist]
     const playlistBeforeTapped = baseQueue.slice(0, validIndex + 1);
     const playlistAfterTapped = baseQueue.slice(validIndex + 1);
 
@@ -406,7 +435,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       ...playlistAfterTapped,
     ];
 
-    // Keep the count intact for any new manual additions!
     userQueueCountRef.current = remainingUserQueue.length;
 
     updateQueueState(newQueue, validIndex);
@@ -414,6 +442,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const seekTo = async (millis: number) => {
+    if (isTransitioningRef.current) return;
     try {
       if (soundRef.current) {
         const status = await soundRef.current.getStatusAsync();
@@ -456,17 +485,28 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const playNext = async () => {
+    if (
+      !currentSong ||
+      queueRef.current.length === 0 ||
+      isTransitioningRef.current
+    )
+      return;
     advance(1, repeatModeRef.current !== "off");
   };
 
   const playPrevious = async () => {
+    if (
+      !currentSong ||
+      queueRef.current.length === 0 ||
+      isTransitioningRef.current
+    )
+      return;
     if (position > 3000) {
       await loadAndPlayIndex(indexRef.current);
       return;
     }
     advance(-1, repeatModeRef.current === "all");
   };
-
   const toggleShuffle = () => {
     setShuffle((prev) => {
       const next = !prev;
@@ -553,6 +593,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const playFromQueue = async (index: number) => {
+    if (isTransitioningRef.current) return;
     await loadAndPlayIndex(index);
   };
 

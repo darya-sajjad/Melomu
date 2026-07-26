@@ -30,6 +30,7 @@ export default function AlbumDetailScreen() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [customArtwork, setCustomArtwork] = useState<string | null>(null);
+  const [coverTimestamp, setCoverTimestamp] = useState(Date.now());
 
   const fetchAlbumDetails = useCallback(async () => {
     try {
@@ -120,6 +121,7 @@ export default function AlbumDetailScreen() {
       );
 
       setCustomArtwork(destPath);
+      setCoverTimestamp(Date.now());
       fetchAlbumDetails();
     } catch (error) {
       console.error("Failed to update album cover:", error);
@@ -164,7 +166,11 @@ export default function AlbumDetailScreen() {
             {index + 1}
           </Text>
           <Image
-            source={trackArtwork ? { uri: trackArtwork } : placeholderIcon}
+            source={
+              trackArtwork
+                ? { uri: `${trackArtwork}?t=${coverTimestamp}` }
+                : placeholderIcon
+            }
             style={styles.trackThumb}
             resizeMode="cover"
           />
@@ -222,7 +228,11 @@ export default function AlbumDetailScreen() {
       <View style={styles.albumHeader}>
         <View style={styles.coverContainer}>
           <Image
-            source={customArtwork ? { uri: customArtwork } : placeholderIcon}
+            source={
+              customArtwork
+                ? { uri: `${customArtwork}?t=${coverTimestamp}` }
+                : placeholderIcon
+            }
             style={styles.squareCoverLarge}
             resizeMode="cover"
           />

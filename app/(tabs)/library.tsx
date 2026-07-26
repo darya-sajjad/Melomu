@@ -112,8 +112,8 @@ export default function LibraryScreen() {
                 `DELETE FROM songs WHERE id IN (${placeholders})`,
                 selectedSongIds,
               );
-              exitSelectMode();
-              fetchSongsFromDatabase();
+              await exitSelectMode();
+              await fetchSongsFromDatabase();
             } catch (error) {
               console.error("Failed batch delete:", error);
             }

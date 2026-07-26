@@ -58,6 +58,7 @@ interface ArtistItem {
 }
 
 export default function ArtistsTab({ songs, searchQuery }: ArtistsTabProps) {
+  // AFTER:
   const { colors } = useTheme();
   const router = useRouter();
   const [artistAvatars, setArtistAvatars] = useState<Record<string, string>>(
@@ -89,7 +90,7 @@ export default function ArtistsTab({ songs, searchQuery }: ArtistsTabProps) {
     };
 
     fetchArtistAvatars();
-  }, []);
+  }, [songs]);
 
   const artistsMap = songs.reduce(
     (acc, song) => {

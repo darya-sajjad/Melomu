@@ -114,8 +114,8 @@ export default function SongsTab({
             });
 
             const backgroundColor = dragX.interpolate({
-              inputRange: [-80, -30, 0],
-              outputRange: [colors.primary, "#404040", colors.background],
+              inputRange: [-100, -40, 0],
+              outputRange: ["#1DB954", "#535353", colors.background],
               extrapolate: "clamp",
             });
 
@@ -124,16 +124,27 @@ export default function SongsTab({
                 style={{
                   backgroundColor,
                   justifyContent: "center",
-                  alignItems: "flex-end",
-                  paddingRight: 24,
-                  flex: 1,
+                  alignItems: "center",
+                  width: 100,
                   marginVertical: 4,
                   borderRadius: 12,
+                  flexDirection: "row",
                 }}
               >
                 <Animated.View style={{ opacity, transform: [{ scale }] }}>
-                  <Ionicons name="list" size={24} color="#FFFFFF" />
+                  <Ionicons name="list" size={20} color="#FFFFFF" />
                 </Animated.View>
+                <Animated.Text
+                  style={{
+                    opacity,
+                    color: "#FFFFFF",
+                    marginLeft: 6,
+                    fontSize: 13,
+                    fontWeight: "600",
+                  }}
+                >
+                  Queue
+                </Animated.Text>
               </Animated.View>
             );
           };
