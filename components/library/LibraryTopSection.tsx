@@ -40,19 +40,18 @@ export function LibraryTopSection({
   const handleOptionPress = (action?: () => void) => {
     setIsMenuOpen(false);
     if (action) {
-      action(); // Call the parent handler directly without side-effects
+      action();
     }
   };
 
   return (
     <View style={styles.topRowContainer}>
-      {/* Search Bar */}
       <View
         style={[
           styles.searchBar,
           {
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
+            backgroundColor: colors.background,
+            borderColor: colors.primary,
           },
         ]}
       >
@@ -88,22 +87,19 @@ export function LibraryTopSection({
         )}
       </View>
 
-      {/* Options Menu Button */}
       <TouchableOpacity
         style={[
           styles.menuButton,
           {
-            backgroundColor: colors.surface,
+            backgroundColor: colors.primary,
             borderColor: colors.border,
           },
         ]}
         activeOpacity={0.7}
         onPress={() => setIsMenuOpen(true)}
       >
-        <Ionicons name="ellipsis-vertical" size={20} color={colors.text} />
+        <Ionicons name="ellipsis-vertical" size={20} color={colors.texttwo} />
       </TouchableOpacity>
-
-      {/* Options Modal */}
       <Modal
         visible={isMenuOpen}
         transparent={true}
@@ -119,10 +115,15 @@ export function LibraryTopSection({
               styles.dropdownMenu,
               {
                 backgroundColor: colors.surface,
-                borderColor: colors.border,
               },
             ]}
           >
+            <Text
+              style={[styles.menuHeader, { color: colors.text, opacity: 0.7 }]}
+            >
+              Actions
+            </Text>
+
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.7}
@@ -134,14 +135,20 @@ export function LibraryTopSection({
                 color={colors.text}
                 style={styles.menuIcon}
               />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>
-                Edit Album Name
-              </Text>
+              <View style={styles.menuItemTextContainer}>
+                <Text style={[styles.menuItemTitle, { color: colors.text }]}>
+                  Album Name
+                </Text>
+                <Text
+                  style={[
+                    styles.menuItemSubtitle,
+                    { color: colors.text, opacity: 0.7 },
+                  ]}
+                >
+                  Edit album name
+                </Text>
+              </View>
             </TouchableOpacity>
-
-            <View
-              style={[styles.divider, { backgroundColor: colors.border }]}
-            />
 
             <TouchableOpacity
               style={styles.menuItem}
@@ -154,13 +161,26 @@ export function LibraryTopSection({
                 color={colors.text}
                 style={styles.menuIcon}
               />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>
-                Edit Artist Name
-              </Text>
+              <View style={styles.menuItemTextContainer}>
+                <Text style={[styles.menuItemTitle, { color: colors.text }]}>
+                  Artist Name
+                </Text>
+                <Text
+                  style={[
+                    styles.menuItemSubtitle,
+                    { color: colors.text, opacity: 0.7 },
+                  ]}
+                >
+                  Edit artist name
+                </Text>
+              </View>
             </TouchableOpacity>
 
             <View
-              style={[styles.divider, { backgroundColor: colors.border }]}
+              style={[
+                styles.divider,
+                { backgroundColor: colors.active, opacity: 0.7 },
+              ]}
             />
 
             <TouchableOpacity
@@ -169,14 +189,24 @@ export function LibraryTopSection({
               onPress={() => handleOptionPress(onSelectMultipleToDelete)}
             >
               <Ionicons
-                name="trash-outline"
+                name="list-outline"
                 size={20}
-                color="#E94560"
+                color={colors.active}
                 style={styles.menuIcon}
               />
-              <Text style={[styles.menuItemText, { color: "#E94560" }]}>
-                Delete Songs
-              </Text>
+              <View style={styles.menuItemTextContainer}>
+                <Text style={[styles.menuItemTitle, { color: colors.active }]}>
+                  Select Songs
+                </Text>
+                <Text
+                  style={[
+                    styles.menuItemSubtitle,
+                    { color: colors.active, opacity: 0.7 },
+                  ]}
+                >
+                  Add to Playlist or Delete
+                </Text>
+              </View>
             </TouchableOpacity>
           </View>
         </Pressable>
@@ -195,7 +225,7 @@ const styles = StyleSheet.create({
   },
   searchBar: {
     flex: 1,
-    height: 48,
+    height: 44,
     borderRadius: 24,
     borderWidth: 1,
     flexDirection: "row",
@@ -215,8 +245,8 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   menuButton: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 24,
     borderWidth: 1,
     alignItems: "center",
@@ -231,31 +261,50 @@ const styles = StyleSheet.create({
     paddingRight: 18,
   },
   dropdownMenu: {
-    width: 200,
+    width: 187,
+    marginRight: -2,
     borderRadius: 16,
-    borderWidth: 1,
-    paddingVertical: 6,
+    paddingVertical: 10,
     elevation: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
   },
+  menuHeader: {
+    fontSize: 11,
+    fontWeight: "700",
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
   menuItem: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
+    alignItems: "flex-start",
+    paddingVertical: 10,
     paddingHorizontal: 16,
   },
   menuIcon: {
     marginRight: 12,
+    marginTop: 2,
   },
-  menuItemText: {
+  menuItemTextContainer: {
+    flex: 1,
+  },
+  menuItemTitle: {
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
+  },
+  menuItemSubtitle: {
+    fontSize: 12,
+    fontWeight: "400",
+    marginTop: 2,
   },
   divider: {
     height: 1,
+    marginVertical: 8,
     marginHorizontal: 12,
   },
 });

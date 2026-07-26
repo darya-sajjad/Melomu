@@ -170,7 +170,7 @@ export default function LibraryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.surface }]}>
       <LibraryTopSection
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -184,7 +184,7 @@ export default function LibraryScreen() {
           styles.curvedSheet,
           {
             backgroundColor: colors.background,
-            borderColor: colors.background,
+            borderColor: colors.primary,
           },
         ]}
       >
@@ -199,7 +199,7 @@ export default function LibraryScreen() {
                   styles.tabPill,
                   {
                     backgroundColor: isActive
-                      ? colors.primary || "#B2EBF2"
+                      ? colors.primary
                       : colors.background,
                   },
                 ]}
@@ -211,7 +211,7 @@ export default function LibraryScreen() {
                 <Text
                   style={[
                     styles.tabPillText,
-                    { color: isActive ? "#000000" : colors.text },
+                    { color: isActive ? colors.texttwo : colors.text },
                   ]}
                 >
                   {tab.label}
@@ -243,12 +243,7 @@ export default function LibraryScreen() {
         </View>
 
         {isSelectMode && (
-          <View
-            style={[
-              styles.actionBar,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
+          <View style={[styles.actionBar, { backgroundColor: colors.surface }]}>
             <TouchableOpacity onPress={exitSelectMode} style={styles.actionBtn}>
               <Ionicons name="close" size={20} color={colors.text} />
               <Text style={[styles.actionText, { color: colors.text }]}>
@@ -257,7 +252,7 @@ export default function LibraryScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleSelectAll}>
-              <Text style={[styles.countText, { color: colors.primary }]}>
+              <Text style={[styles.countText, { color: colors.text }]}>
                 {selectedSongIds.length === songs.length
                   ? "Deselect"
                   : "Select All"}{" "}
@@ -273,8 +268,8 @@ export default function LibraryScreen() {
                 >
                   <Ionicons
                     name="add-circle-outline"
-                    size={20}
-                    color={colors.primary}
+                    size={24}
+                    color={colors.text}
                   />
                 </TouchableOpacity>
               )}
@@ -297,7 +292,7 @@ export default function LibraryScreen() {
                   style={[
                     styles.actionText,
                     {
-                      color: batchEditType ? colors.primary : "#FF5252",
+                      color: batchEditType ? colors.primary : "#ca1818",
                     },
                   ]}
                 >
@@ -341,8 +336,8 @@ const styles = StyleSheet.create({
   },
   curvedSheet: {
     flex: 1,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: 34,
+    borderTopRightRadius: 34,
     paddingTop: 20,
     paddingBottom: 0,
     borderWidth: 1,
@@ -375,8 +370,8 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     height: 56,
-    borderRadius: 28,
-    borderWidth: 1,
+    borderRadius: 35,
+    borderWidth: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -396,7 +391,7 @@ const styles = StyleSheet.create({
   rightActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 30,
   },
   actionText: {
     fontSize: 15,

@@ -68,19 +68,17 @@ export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
   const router = useRouter();
   const isFocused = useIsFocused();
 
-  // Map of album name -> album_artworks path from SQLite
   const [albumArtworksMap, setAlbumArtworksMap] = useState<
     Record<string, string>
   >({});
 
-  // Fetch all custom album covers directly from SQLite whenever screen is focused
   useEffect(() => {
     let isMounted = true;
 
     async function loadAlbumArtworks() {
       try {
         const db = await dbAsync;
-        // Ensure table exists
+
         await db.execAsync(`
           CREATE TABLE IF NOT EXISTS album_artworks (
             album TEXT PRIMARY KEY,
@@ -116,7 +114,6 @@ export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
     };
   }, [isFocused]);
 
-  // Group songs into albums
   const albumsMap = songs.reduce<Record<string, AlbumGroup>>((acc, song) => {
     const albumKey = song.album || "Unknown Album";
 
@@ -138,7 +135,6 @@ export default function AlbumsTab({ songs, searchQuery }: AlbumsTabProps) {
       a.artist.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  // AFTER:
   const renderAlbumItem = useCallback(
     ({ item }: { item: AlbumGroup }) => {
       const firstTrackWithArt = item.tracks.find(

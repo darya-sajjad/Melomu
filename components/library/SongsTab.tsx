@@ -31,9 +31,6 @@ interface SongsTabProps {
   songs: Song[];
   searchQuery: string;
   onRefreshDatabase: () => void;
-  // Multi-select — driven entirely by the parent's floating actionBar now.
-  // SongsTab only needs to know whether it's active and which ids are
-  // selected, so rows can show checkboxes and toggle selection on tap.
   isSelectMode?: boolean;
   selectedSongIds?: string[];
   onToggleSelectSong?: (id: string) => void;
@@ -78,11 +75,6 @@ export default function SongsTab({
 
   return (
     <View style={styles.container}>
-      {/* NOTE: the old duplicate "X Selected / Select All / Add to Playlist"
-          header that used to live here has been removed — library.tsx's
-          floating actionBar already covers all of that, and having both
-          on screen at once was the double-UI issue. */}
-
       <FlatList
         data={filteredSongs}
         keyExtractor={(item) => item.id}
@@ -184,13 +176,9 @@ export default function SongsTab({
                     backgroundColor: isSelected
                       ? colors.surface
                       : colors.background,
-                    borderColor: isSelected
-                      ? colors.primary
-                      : colors.background,
                   },
                 ]}
               >
-                {/* Multi-Select Checkbox */}
                 {isSelectMode && (
                   <View style={styles.checkboxContainer}>
                     <Ionicons
@@ -241,11 +229,11 @@ export default function SongsTab({
                       setIsAddToPlaylistVisible(true);
                     }}
                   >
-                    <Ionicons
+                    {/*<Ionicons
                       name="add-circle-outline"
                       size={22}
                       color={colors.textSecondary}
-                    />
+                    />*/}
                   </TouchableOpacity>
                 )}
               </TouchableOpacity>
@@ -288,8 +276,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 11,
     borderRadius: 12,
-    marginBottom: 4,
-    borderWidth: 1,
+    marginBottom: 5,
   },
   checkboxContainer: {
     marginRight: 10,
