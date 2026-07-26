@@ -13,12 +13,12 @@ import {
   Alert,
   FlatList,
   Image,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ArtistDetailScreen() {
   const { name } = useLocalSearchParams<{ name: string }>();
@@ -30,6 +30,7 @@ export default function ArtistDetailScreen() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [customAvatar, setCustomAvatar] = useState<string | null>(null);
+  const [avatarTimestamp, setAvatarTimestamp] = useState(Date.now());
 
   const fetchArtistSongs = useCallback(async () => {
     try {
@@ -107,6 +108,7 @@ export default function ArtistDetailScreen() {
       );
 
       setCustomAvatar(destPath);
+      setAvatarTimestamp(Date.now());
     } catch (error) {
       console.error("Failed to update artist photo:", error);
     }
@@ -139,11 +141,11 @@ export default function ArtistDetailScreen() {
         activeOpacity={0.7}
         style={[
           styles.trackRow,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          { backgroundColor: colors.surface, borderColor: colors.primary },
         ]}
         onPress={() => playSong(item, songs)}
       >
-        <Text style={[styles.trackIndex, { color: colors.textSecondary }]}>
+        <Text style={[styles.trackIndex, { color: colors.text }]}>
           {index + 1}
         </Text>
         <View style={styles.trackMeta}>
@@ -179,7 +181,10 @@ export default function ArtistDetailScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={["top", "left", "right"]}
+    >
       <View style={styles.topNav}>
         <TouchableOpacity
           onPress={() =>
@@ -197,8 +202,12 @@ export default function ArtistDetailScreen() {
       <View style={styles.artistHeader}>
         <View style={styles.avatarContainer}>
           <Image
-            source={customAvatar ? { uri: customAvatar } : placeholderIcon}
-            style={styles.circleAvatarLarge}
+            source={
+              customAvatar
+                ? { uri: `${customAvatar}?t=${avatarTimestamp}` }
+                : placeholderIcon
+            }
+            style={[styles.circleAvatarLarge, { borderColor: colors.surface }]}
             resizeMode="cover"
           />
           <TouchableOpacity
@@ -208,7 +217,7 @@ export default function ArtistDetailScreen() {
               styles.editBadge,
               {
                 backgroundColor: colors.primary,
-                borderColor: colors.background,
+                borderColor: colors.surface,
               },
             ]}
           >
@@ -230,7 +239,6 @@ export default function ArtistDetailScreen() {
             onPress={() => playSong(songs[0], songs)}
           >
             <Ionicons name="play" size={20} color="#FFFFFF" />
-            <Text style={styles.playAllText}>Play Artist Tracks</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -241,14 +249,13 @@ export default function ArtistDetailScreen() {
         contentContainerStyle={styles.listPadding}
         renderItem={renderTrack}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "ios" ? 50 : 30,
   },
   loadingCenter: {
     flex: 1,
@@ -256,7 +263,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   topNav: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     marginBottom: 10,
   },
   backBtn: {
@@ -277,6 +284,7 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
+    borderWidth: 2,
   },
   editBadge: {
     position: "absolute",
@@ -287,7 +295,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
+    borderWidth: 2,
   },
   artistName: {
     fontSize: 22,
@@ -302,15 +310,10 @@ const styles = StyleSheet.create({
   playAllBtn: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderRadius: 40,
     gap: 8,
-  },
-  playAllText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "600",
   },
   listPadding: {
     paddingHorizontal: 16,

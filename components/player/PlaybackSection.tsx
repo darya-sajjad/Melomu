@@ -132,7 +132,9 @@ export default function PlaybackSection({
                   { backgroundColor: colors.primary },
                 ]}
               >
-                <Text style={[styles.tinyBadgeText, { color: colors.active }]}>
+                <Text
+                  style={[styles.tinyBadgeText, { color: colors.background }]}
+                >
                   1
                 </Text>
               </View>

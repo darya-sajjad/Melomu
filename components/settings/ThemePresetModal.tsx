@@ -2,12 +2,12 @@ import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from "react-native";
 
 export type ThemePresetOption = "system" | "classic" | "oled" | "midnight";
@@ -67,7 +67,10 @@ export default function ThemePresetModal({
             <View
               style={[
                 styles.modalCard,
-                { backgroundColor: colors.surface, borderColor: colors.border },
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.primary,
+                },
               ]}
             >
               <View style={styles.headerRow}>
@@ -91,7 +94,7 @@ export default function ThemePresetModal({
                     activeOpacity={0.7}
                     style={[
                       styles.presetItem,
-                      { borderTopColor: colors.border },
+                      { borderTopColor: colors.primary },
                     ]}
                     onPress={() => {
                       onSelectPreset(preset.id);
@@ -141,14 +144,14 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
+    padding: 18,
+    borderWidth: 2,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 14,
   },
   title: {
     fontSize: 18,

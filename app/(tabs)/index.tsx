@@ -1,4 +1,8 @@
+import favoritesCover from "@/assets/fav.png";
 import placeholderIcon from "@/assets/icon.png";
+import leastCover from "@/assets/least.png";
+import mostCover from "@/assets/most.png";
+import recentCover from "@/assets/recent.png";
 import CreatePlaylistModal from "@/components/Home/CreatePlaylistModal";
 import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
@@ -7,21 +11,25 @@ import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Dimensions,
   Image,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const GRID_PADDING = 20;
+const GRID_GAP = 12;
+const ITEM_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP) / 2;
 interface SmartPlaylistCard {
   id: string;
   title: string;
   subtitle: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  colorPreset: string;
+  cover: any;
 }
 
 export default function HomeScreen() {
@@ -37,35 +45,31 @@ export default function HomeScreen() {
           id: "recent",
           title: "Recently Played",
           subtitle: "Daisy",
-          icon: "time-outline",
-          colorPreset: "#4E9F3D",
+          cover: recentCover,
         },
         {
           id: "favorites",
           title: "Favourites",
           subtitle: "Daisy",
-          icon: "heart-outline",
-          colorPreset: "#E94560",
+          cover: favoritesCover,
         },
         {
           id: "most",
           title: "Most Played",
           subtitle: "Daisy",
-          icon: "flame-outline",
-          colorPreset: colors.primary,
+          cover: mostCover,
         },
         {
           id: "least",
           title: "Least Played",
           subtitle: "Daisy",
-          icon: "trending-down-outline",
-          colorPreset: "#1F4690",
+          cover: leastCover,
         },
       ]);
     } catch (error) {
       console.error("Failed to set metrics:", error);
     }
-  }, [colors.primary]);
+  }, []);
 
   const [customPlaylists, setCustomPlaylists] = useState<any[]>([]);
   const [isCreateModalVisible, setCreateModalVisible] = useState(false);
@@ -93,33 +97,30 @@ export default function HomeScreen() {
   }, [isFocused, loadSmartPlaylistMetrics, loadCustomPlaylists]);
 
   return (
-    <>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={["top", "left", "right"]}
+    >
+      <TouchableOpacity
+        activeOpacity={0.7}
+        style={styles.newPlaylistBtn}
+        onPress={() => setCreateModalVisible(true)}
+      >
+        <Ionicons name="add-circle-outline" size={34} color={colors.primary} />
+        <Text style={[styles.newPlaylistText, { color: colors.text }]}>
+          New Playlist
+        </Text>
+      </TouchableOpacity>
+
       <ScrollView
-        style={[styles.container, { backgroundColor: colors.background }]}
+        style={styles.scrollContainer}
         contentContainerStyle={styles.scrollPadding}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top Header Action */}
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={styles.newPlaylistBtn}
-          onPress={() => setCreateModalVisible(true)}
-        >
-          <Ionicons name="add-circle-outline" size={24} color={colors.text} />
-          <Text style={[styles.newPlaylistText, { color: colors.text }]}>
-            New Playlist
-          </Text>
-        </TouchableOpacity>
-
-        {/* 1. Full-width Thicker Divider after New Playlist Button */}
-        <View
-          style={[styles.thickDivider, { backgroundColor: colors.border }]}
-        />
-
-        {/* Smart Playlists List */}
-        {smartPlaylists.map((item, index) => (
-          <React.Fragment key={item.id}>
+        <View style={styles.gridContainer}>
+          {smartPlaylists.map((item, index) => (
             <TouchableOpacity
+              key={item.id}
               activeOpacity={0.75}
               onPress={() =>
                 router.push({
@@ -127,41 +128,32 @@ export default function HomeScreen() {
                   params: { id: item.id, title: item.title },
                 })
               }
-              style={styles.playlistRow}
+              style={[
+                styles.gridItem,
+                index % 2 === 0 && { marginRight: GRID_GAP },
+              ]}
             >
-              <View
-                style={[
-                  styles.artworkContainer,
-                  { backgroundColor: item.colorPreset },
-                ]}
-              >
-                <Ionicons name={item.icon} size={30} color="#FFFFFF" />
-              </View>
-
-              <View style={styles.metaContainer}>
-                <Text
-                  style={[styles.rowTitle, { color: colors.text }]}
-                  numberOfLines={1}
-                >
-                  {item.title}
-                </Text>
-                <Text
-                  style={[styles.rowSubtitle, { color: colors.textSecondary }]}
-                  numberOfLines={1}
-                >
-                  {item.subtitle}
-                </Text>
-              </View>
-            </TouchableOpacity>
-            {index < smartPlaylists.length - 1 && (
-              <View
-                style={[styles.thinDivider, { backgroundColor: colors.border }]}
+              <Image
+                source={item.cover}
+                style={styles.gridImage}
+                resizeMode="cover"
               />
-            )}
-          </React.Fragment>
-        ))}
+              <Text
+                style={[styles.gridSubtitle, { color: colors.textSecondary }]}
+                numberOfLines={1}
+              >
+                {item.subtitle}
+              </Text>
+              <Text
+                style={[styles.gridTitle, { color: colors.text }]}
+                numberOfLines={1}
+              >
+                {item.title}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-        {/* 2. Full-width Thicker Divider below Smart Playlists */}
         {customPlaylists.length > 0 && (
           <View
             style={[
@@ -171,7 +163,6 @@ export default function HomeScreen() {
           />
         )}
 
-        {/* Custom Playlists List */}
         {customPlaylists.length > 0 &&
           customPlaylists.map((item, index) => (
             <React.Fragment key={item.id}>
@@ -233,14 +224,16 @@ export default function HomeScreen() {
           loadCustomPlaylists();
         }}
       />
-    </>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "ios" ? 50 : 30,
+  },
+  scrollContainer: {
+    flex: 1,
   },
   scrollPadding: {
     paddingHorizontal: 20,
@@ -250,13 +243,37 @@ const styles = StyleSheet.create({
   newPlaylistBtn: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
-    marginTop: 8,
+    marginBottom: 8,
+    marginTop: 10,
+    marginHorizontal: 20,
   },
   newPlaylistText: {
     fontSize: 18,
     fontWeight: "600",
     marginLeft: 10,
+  },
+  gridContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  gridItem: {
+    width: ITEM_WIDTH,
+    marginBottom: 16,
+  },
+  gridImage: {
+    width: ITEM_WIDTH,
+    height: ITEM_WIDTH,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  gridTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  gridSubtitle: {
+    fontSize: 13,
+    fontWeight: "500",
+    marginBottom: 2,
   },
   thickDivider: {
     width: "100%",

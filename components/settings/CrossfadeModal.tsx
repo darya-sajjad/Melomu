@@ -13,12 +13,12 @@ import {
 
 interface CrossfadeModalProps {
   visible: boolean;
-  crossfadeDuration: number; // in seconds, 0 = off
+  crossfadeDuration: number;
   onSelectDuration: (seconds: number) => void;
   onClose: () => void;
 }
 
-const DURATIONS = [0, 2, 4, 6, 8, 10, 12];
+const DURATIONS = [0, 2, 4, 6, 8];
 
 export default function CrossfadeModal({
   visible,
@@ -41,7 +41,10 @@ export default function CrossfadeModal({
             <View
               style={[
                 styles.modalCard,
-                { backgroundColor: colors.surface, borderColor: colors.border },
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.primary,
+                },
               ]}
             >
               <View style={styles.headerRow}>
@@ -73,7 +76,7 @@ export default function CrossfadeModal({
                     activeOpacity={0.7}
                     style={[
                       styles.optionItem,
-                      { borderTopColor: colors.border },
+                      { borderTopColor: colors.primary },
                     ]}
                     onPress={() => {
                       onSelectDuration(seconds);
@@ -107,12 +110,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
-    paddingHorizontal: 20,
   },
   modalCard: {
     borderRadius: 20,
     padding: 20,
-    borderWidth: 1,
+    marginHorizontal: 20,
+    borderWidth: 2,
   },
   headerRow: {
     flexDirection: "row",
@@ -132,7 +135,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 14,
+    paddingVertical: 15,
     borderTopWidth: 1,
   },
   optionLabel: {

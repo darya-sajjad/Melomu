@@ -5,15 +5,15 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
 import {
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 interface PlaylistMeta {
@@ -102,7 +102,7 @@ export default function EditPlaylistModal({
         <View
           style={[
             styles.modalBox,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            { backgroundColor: colors.surface, borderColor: colors.primary },
           ]}
         >
           <Text style={[styles.modalTitle, { color: colors.text }]}>
@@ -121,12 +121,12 @@ export default function EditPlaylistModal({
                 { backgroundColor: colors.background },
               ]}
             />
-            <Text style={[styles.coverHint, { color: colors.primary }]}>
+            <Text style={[styles.coverHint, { color: colors.textSecondary }]}>
               Change Cover Photo
             </Text>
           </TouchableOpacity>
 
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+          <Text style={[styles.inputLabel, { color: colors.text }]}>
             Playlist Name
           </Text>
           <TextInput
@@ -135,7 +135,7 @@ export default function EditPlaylistModal({
               {
                 backgroundColor: colors.background,
                 color: colors.text,
-                borderColor: colors.border,
+                borderColor: colors.primary,
               },
             ]}
             value={name}
@@ -158,7 +158,6 @@ export default function EditPlaylistModal({
                 styles.saveBtn,
                 {
                   backgroundColor: colors.primary,
-                  opacity: !name.trim() || isSaving ? 0.5 : 1,
                 },
               ]}
             >
@@ -180,16 +179,31 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalBox: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: 25,
     padding: 24,
-    borderWidth: 1,
+    borderWidth: 2,
     borderBottomWidth: 0,
   },
-  modalTitle: { fontSize: 20, fontWeight: "700", marginBottom: 20 },
-  coverPicker: { alignSelf: "center", alignItems: "center", marginBottom: 20 },
-  coverPreview: { width: 90, height: 90, borderRadius: 14 },
-  coverHint: { marginTop: 8, fontSize: 13, fontWeight: "600" },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 20,
+  },
+  coverPicker: {
+    alignSelf: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  coverPreview: {
+    width: 90,
+    height: 90,
+    borderRadius: 14,
+  },
+  coverHint: {
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: "600",
+  },
   inputLabel: {
     fontSize: 12,
     fontWeight: "600",
@@ -217,7 +231,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  cancelText: { fontSize: 15, fontWeight: "600" },
+  cancelText: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
   saveBtn: {
     flex: 2,
     height: 48,
@@ -225,5 +242,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  saveText: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
+  saveText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+  },
 });

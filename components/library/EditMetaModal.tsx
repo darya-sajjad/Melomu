@@ -35,7 +35,6 @@ interface EditMetaModalProps {
   onSaveSuccess: () => void;
 }
 
-// ✨ 1. Define styles HERE before the component uses it
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
@@ -51,7 +50,7 @@ const styles = StyleSheet.create({
     maxHeight: "65%",
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "700",
     marginBottom: 20,
   },
@@ -74,7 +73,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 10,
-    paddingBottom: Platform.OS === "ios" ? 20 : 0,
+    paddingBottom: 20,
   },
   cancelBtn: {
     flex: 1,
@@ -177,10 +176,6 @@ export default function EditMetaModal({
     try {
       const db = await dbAsync;
 
-      // Defensive — this table is normally created the first time someone
-      // visits AlbumDetailScreen, but a song can be filed into an album
-      // from here first (e.g. brand new install), so make sure it exists
-      // before querying it below.
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS album_artworks (
           album TEXT PRIMARY KEY,
@@ -238,7 +233,11 @@ export default function EditMetaModal({
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={
+          Platform.OS === "ios" || Platform.OS === "android"
+            ? "padding"
+            : undefined
+        }
         style={{ flex: 1 }}
       >
         <TouchableOpacity
@@ -283,7 +282,7 @@ export default function EditMetaModal({
                   />
                   <Text
                     style={{
-                      color: colors.primary,
+                      color: colors.textSecondary,
                       textAlign: "center",
                       marginTop: 8,
                       fontSize: 13,
@@ -294,9 +293,7 @@ export default function EditMetaModal({
                   </Text>
                 </TouchableOpacity>
 
-                <Text
-                  style={[styles.inputLabel, { color: colors.textSecondary }]}
-                >
+                <Text style={[styles.inputLabel, { color: colors.text }]}>
                   Track Title
                 </Text>
                 <TextInput
@@ -305,7 +302,7 @@ export default function EditMetaModal({
                     {
                       backgroundColor: colors.background,
                       color: colors.text,
-                      borderColor: colors.border,
+                      borderColor: colors.primary,
                     },
                   ]}
                   value={title}
@@ -313,9 +310,7 @@ export default function EditMetaModal({
                   placeholderTextColor={colors.textSecondary}
                 />
 
-                <Text
-                  style={[styles.inputLabel, { color: colors.textSecondary }]}
-                >
+                <Text style={[styles.inputLabel, { color: colors.text }]}>
                   Artist Name
                 </Text>
                 <TextInput
@@ -324,7 +319,7 @@ export default function EditMetaModal({
                     {
                       backgroundColor: colors.background,
                       color: colors.text,
-                      borderColor: colors.border,
+                      borderColor: colors.primary,
                     },
                   ]}
                   value={artist}
@@ -332,9 +327,7 @@ export default function EditMetaModal({
                   placeholderTextColor={colors.textSecondary}
                 />
 
-                <Text
-                  style={[styles.inputLabel, { color: colors.textSecondary }]}
-                >
+                <Text style={[styles.inputLabel, { color: colors.text }]}>
                   Album Name
                 </Text>
                 <TextInput
@@ -343,7 +336,7 @@ export default function EditMetaModal({
                     {
                       backgroundColor: colors.background,
                       color: colors.text,
-                      borderColor: colors.border,
+                      borderColor: colors.primary,
                     },
                   ]}
                   value={album}

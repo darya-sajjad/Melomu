@@ -89,7 +89,7 @@ export default function ArtistsTab({ songs, searchQuery }: ArtistsTabProps) {
     };
 
     fetchArtistAvatars();
-  }, []);
+  }, [songs]);
 
   const artistsMap = songs.reduce(
     (acc, song) => {
@@ -111,12 +111,11 @@ export default function ArtistsTab({ songs, searchQuery }: ArtistsTabProps) {
     a.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  // AFTER:
   const renderArtistItem = useCallback(
     ({ item }: { item: ArtistItem }) => (
       <TouchableOpacity
         activeOpacity={0.7}
-        style={[styles.artistRow, { borderBottomColor: colors.border }]}
+        style={[styles.artistRow, { borderBottomColor: colors.primary }]}
         onPress={() =>
           router.push({
             pathname: "/artist",
@@ -131,14 +130,10 @@ export default function ArtistsTab({ songs, searchQuery }: ArtistsTabProps) {
         <Text style={[styles.artistName, { color: colors.text }]}>
           {item.name}
         </Text>
-        <Ionicons
-          name="chevron-forward"
-          size={20}
-          color={colors.textSecondary}
-        />
+        <Ionicons name="chevron-forward" size={20} color={colors.primary} />
       </TouchableOpacity>
     ),
-    [colors.border, colors.text, colors.textSecondary, router],
+    [colors.primary, colors.text, router],
   );
 
   return (

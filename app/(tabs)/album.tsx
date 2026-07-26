@@ -13,12 +13,12 @@ import {
   Alert,
   FlatList,
   Image,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AlbumDetailScreen() {
   const { name } = useLocalSearchParams<{ name: string }>();
@@ -30,6 +30,7 @@ export default function AlbumDetailScreen() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [customArtwork, setCustomArtwork] = useState<string | null>(null);
+  const [coverTimestamp, setCoverTimestamp] = useState(Date.now());
 
   const fetchAlbumDetails = useCallback(async () => {
     try {
@@ -120,6 +121,7 @@ export default function AlbumDetailScreen() {
       );
 
       setCustomArtwork(destPath);
+      setCoverTimestamp(Date.now());
       fetchAlbumDetails();
     } catch (error) {
       console.error("Failed to update album cover:", error);
@@ -156,7 +158,7 @@ export default function AlbumDetailScreen() {
           activeOpacity={0.7}
           style={[
             styles.trackRow,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            { backgroundColor: colors.surface, borderColor: colors.primary },
           ]}
           onPress={() => playSong(item, songs)}
         >
@@ -164,7 +166,11 @@ export default function AlbumDetailScreen() {
             {index + 1}
           </Text>
           <Image
-            source={trackArtwork ? { uri: trackArtwork } : placeholderIcon}
+            source={
+              trackArtwork
+                ? { uri: `${trackArtwork}?t=${coverTimestamp}` }
+                : placeholderIcon
+            }
             style={styles.trackThumb}
             resizeMode="cover"
           />
@@ -188,7 +194,7 @@ export default function AlbumDetailScreen() {
         </TouchableOpacity>
       );
     },
-    [colors, customArtwork, playSong, songs],
+    [colors, customArtwork, coverTimestamp, playSong, songs],
   );
 
   if (isLoading) {
@@ -204,7 +210,9 @@ export default function AlbumDetailScreen() {
   const artistName = songs[0]?.artist || "Unknown Artist";
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View style={styles.topNav}>
         <TouchableOpacity
           onPress={() =>
@@ -222,8 +230,12 @@ export default function AlbumDetailScreen() {
       <View style={styles.albumHeader}>
         <View style={styles.coverContainer}>
           <Image
-            source={customArtwork ? { uri: customArtwork } : placeholderIcon}
-            style={styles.squareCoverLarge}
+            source={
+              customArtwork
+                ? { uri: `${customArtwork}?t=${coverTimestamp}` }
+                : placeholderIcon
+            }
+            style={[styles.squareCoverLarge, { borderColor: colors.surface }]}
             resizeMode="cover"
           />
           <TouchableOpacity
@@ -255,7 +267,6 @@ export default function AlbumDetailScreen() {
             onPress={() => playSong(songs[0], songs)}
           >
             <Ionicons name="play" size={20} color="#FFFFFF" />
-            <Text style={styles.playAllText}>Play Album</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -266,14 +277,13 @@ export default function AlbumDetailScreen() {
         contentContainerStyle={styles.listPadding}
         renderItem={renderTrack}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "ios" ? 50 : 30,
   },
   loadingCenter: {
     flex: 1,
@@ -281,7 +291,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   topNav: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     marginBottom: 10,
   },
   backBtn: {
@@ -302,17 +312,18 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 20,
+    borderWidth: 0,
   },
   editBadge: {
     position: "absolute",
-    bottom: -6,
-    right: -6,
+    bottom: -8,
+    right: -8,
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
+    borderWidth: 2,
   },
   albumTitle: {
     fontSize: 22,
@@ -327,15 +338,10 @@ const styles = StyleSheet.create({
   playAllBtn: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderRadius: 40,
     gap: 8,
-  },
-  playAllText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "600",
   },
   listPadding: {
     paddingHorizontal: 16,
