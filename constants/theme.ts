@@ -10,13 +10,13 @@ export type Colors = {
 };
 
 export const darkColors: Colors = {
-  background: "#1B4965", // Main screen background
-  surface: "#62B6CB", // Card backgrounds, player controls row
-  primary: "#BEE9E8", // Accent buttons, active tab icon, sliders
-  text: "#F5F5F5", // Main song titles, headers
-  textSecondary: "#BEE9E8", // Artist names, duration timestamps
-  border: "#62B6CB", // Subtle divider lines
-  active: "#c762cb",
+  background: "#0f0f0f", // #EBA2b9 #F9EBF2 #BF3054 #260309
+  surface: "#260309", // Card backgrounds, player controls row
+  primary: "#EBA2b9", // Accent buttons, active tab icon, sliders
+  text: "#ffffff", // Main song titles, headers
+  textSecondary: "#F9EBF2", // Artist names, duration timestamps
+  border: "#EBA2b9", // Subtle divider lines
+  active: "#BF3054",
 };
 
 export const lightColors: Colors = {

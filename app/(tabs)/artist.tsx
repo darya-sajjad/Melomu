@@ -30,6 +30,7 @@ export default function ArtistDetailScreen() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [customAvatar, setCustomAvatar] = useState<string | null>(null);
+  const [avatarTimestamp, setAvatarTimestamp] = useState(Date.now());
 
   const fetchArtistSongs = useCallback(async () => {
     try {
@@ -107,6 +108,7 @@ export default function ArtistDetailScreen() {
       );
 
       setCustomAvatar(destPath);
+      setAvatarTimestamp(Date.now());
     } catch (error) {
       console.error("Failed to update artist photo:", error);
     }
@@ -197,7 +199,11 @@ export default function ArtistDetailScreen() {
       <View style={styles.artistHeader}>
         <View style={styles.avatarContainer}>
           <Image
-            source={customAvatar ? { uri: customAvatar } : placeholderIcon}
+            source={
+              customAvatar
+                ? { uri: `${customAvatar}?t=${avatarTimestamp}` }
+                : placeholderIcon
+            }
             style={styles.circleAvatarLarge}
             resizeMode="cover"
           />

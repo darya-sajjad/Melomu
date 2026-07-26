@@ -32,16 +32,27 @@ export default function SwipeableSongRow({ item, children }: Props) {
     });
 
     const backgroundColor = dragX.interpolate({
-      inputRange: [-80, -30, 0],
-      outputRange: [colors.primary, "#404040", colors.background],
+      inputRange: [-100, -40, 0],
+      outputRange: ["#1DB954", "#535353", colors.background],
       extrapolate: "clamp",
     });
 
     return (
       <Animated.View style={[styles.actionBackground, { backgroundColor }]}>
         <Animated.View style={{ opacity, transform: [{ scale }] }}>
-          <Ionicons name="list" size={24} color="#FFFFFF" />
+          <Ionicons name="list" size={20} color="#FFFFFF" />
         </Animated.View>
+        <Animated.Text
+          style={{
+            opacity,
+            color: "#FFFFFF",
+            marginLeft: 6,
+            fontSize: 13,
+            fontWeight: "600",
+          }}
+        >
+          Queue
+        </Animated.Text>
       </Animated.View>
     );
   };
@@ -65,10 +76,13 @@ export default function SwipeableSongRow({ item, children }: Props) {
 const styles = StyleSheet.create({
   actionBackground: {
     justifyContent: "center",
-    alignItems: "flex-end",
-    paddingRight: 24,
-    flex: 1,
+    alignItems: "center",
+    width: 100,
     marginVertical: 4,
-    borderRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    flexDirection: "row",
   },
 });
