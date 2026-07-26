@@ -25,8 +25,8 @@ function TabLayoutInner() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.textSecondary,
+          tabBarActiveTintColor: colors.active,
+          tabBarInactiveTintColor: colors.primary,
           tabBarShowLabel: true,
           tabBarLabelStyle: {
             fontSize: 11,
@@ -34,18 +34,16 @@ function TabLayoutInner() {
             marginBottom: Platform.OS === "ios" ? 4 : 6,
           },
           tabBarStyle: {
-            backgroundColor: colors.surface,
-            borderTopColor: colors.border,
+            backgroundColor: colors.background,
             borderTopWidth: 0.5,
+            borderColor: colors.surface,
             height: TAB_BAR_HEIGHT,
             paddingTop: 8,
             paddingBottom: Platform.OS === "ios" ? 28 : 8,
-            // 1. Position absolute lets the screen content fill the device behind the tab bar
             position: "absolute",
             bottom: 0,
             left: 0,
             right: 0,
-            // 2. Animate ONLY the tab bar here, not the whole Tabs wrapper
             display: isSelectionModeActive ? "none" : "flex",
             transform: [
               { translateY: isSelectionModeActive ? TAB_BAR_HEIGHT : 0 },
@@ -113,7 +111,6 @@ function TabLayoutInner() {
         />
       </Tabs>
 
-      {/* Floating MiniPlayer */}
       <MiniPlayer />
     </View>
   );

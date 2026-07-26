@@ -41,7 +41,6 @@ export default function AddToPlaylistModal({
   const { colors } = useTheme();
   const [playlists, setPlaylists] = useState<PlaylistRow[]>([]);
 
-  // Resolve target songs array (bulk list or single item)
   const targetSongs = useMemo(() => {
     return songs && songs.length > 0 ? songs : song ? [song] : [];
   }, [songs, song]);
@@ -61,7 +60,6 @@ export default function AddToPlaylistModal({
       const songIds = targetSongs.map((s) => s.id);
       const placeholders = songIds.map(() => "?").join(",");
 
-      // Query which playlists contain ALL targeted songs
       const rows = await db.getAllAsync<{ playlist_id: string; count: number }>(
         `SELECT playlist_id, COUNT(DISTINCT song_id) as count 
          FROM playlist_songs 
@@ -76,7 +74,6 @@ export default function AddToPlaylistModal({
         const matchingCount = countMap.get(p.id) || 0;
         return {
           ...p,
-          // Marked as added if all targeted songs exist in this playlist
           isAdded: matchingCount >= targetSongs.length,
         };
       });
@@ -181,7 +178,7 @@ export default function AddToPlaylistModal({
         <View
           style={[
             styles.modalBox,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            { backgroundColor: colors.surface, borderColor: colors.primary },
           ]}
         >
           <Text

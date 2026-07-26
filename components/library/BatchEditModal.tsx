@@ -2,7 +2,6 @@ import { useTheme } from "@/constants/ThemeContext";
 import React, { useEffect, useState } from "react";
 import {
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -62,9 +61,8 @@ export default function BatchEditModal({
             styles.modalBox,
             {
               backgroundColor: colors.surface,
-              borderColor: colors.border,
-              // Fixed low position (right near the bottom where the navbar usually sits)
-              marginBottom: Platform.OS === "ios" ? 420 : 20,
+              borderColor: colors.surface,
+              marginBottom: 425,
             },
           ]}
         >
@@ -78,7 +76,7 @@ export default function BatchEditModal({
                 styles.input,
                 {
                   color: colors.text,
-                  borderColor: colors.border,
+                  borderColor: colors.primary,
                   backgroundColor: colors.background,
                 },
               ]}
@@ -102,7 +100,6 @@ export default function BatchEditModal({
                   styles.btn,
                   {
                     backgroundColor: colors.primary,
-                    opacity: value.trim() ? 1 : 0.5,
                   },
                 ]}
                 disabled={!value.trim()}
@@ -138,8 +135,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   title: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "600",
     marginBottom: 16,
   },
   input: {
@@ -164,7 +161,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   saveText: {
-    color: "#FFFFFF",
     fontWeight: "600",
+    color: "#ffffff",
   },
 });

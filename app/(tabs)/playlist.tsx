@@ -1,4 +1,8 @@
+import favCover from "@/assets/fav.png";
 import placeholderIcon from "@/assets/icon.png";
+import leastCover from "@/assets/least.png";
+import mostCover from "@/assets/most.png";
+import recentCover from "@/assets/recent.png";
 import EditPlaylistModal from "@/components/Home/EditPlaylistModal";
 import SwipeableSongRow from "@/components/library/SwipeableSongRow";
 import { useAudio } from "@/constants/AudioContext";
@@ -222,11 +226,15 @@ export default function PlaylistDetailScreen() {
     );
   };
 
-  // AFTER:
   const headerBlock = useMemo(() => {
-    const artwork = playlistMeta?.artwork_path
-      ? { uri: playlistMeta.artwork_path }
-      : placeholderIcon;
+    let artwork;
+    if (id === "recent") artwork = recentCover;
+    else if (id === "favorites") artwork = favCover;
+    else if (id === "most") artwork = mostCover;
+    else if (id === "least") artwork = leastCover;
+    else if (playlistMeta?.artwork_path)
+      artwork = { uri: playlistMeta.artwork_path };
+    else artwork = placeholderIcon;
 
     const titleText = playlistMeta?.name || title || "Playlist";
 
@@ -283,6 +291,7 @@ export default function PlaylistDetailScreen() {
     colors,
     mode,
     isCustomPlaylist,
+    id,
     playlistMeta?.artwork_path,
     playlistMeta?.name,
     title,
