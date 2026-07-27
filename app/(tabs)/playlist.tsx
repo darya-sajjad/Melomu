@@ -7,11 +7,18 @@ import EditPlaylistModal from "@/components/Home/EditPlaylistModal";
 import SwipeableSongRow from "@/components/library/SwipeableSongRow";
 import { useAudio } from "@/constants/AudioContext";
 import { dbAsync } from "@/constants/Database";
+import { useSelectionMode } from "@/constants/Selectionmodecontext";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -64,6 +71,8 @@ export default function PlaylistDetailScreen() {
   const { playSong, toggleFavorite } = useAudio();
   const insets = useSafeAreaInsets();
 
+  const { setIsSelectionModeActive } = useSelectionMode();
+
   const { id, title } = useLocalSearchParams<{ id: string; title: string }>();
   const isCustomPlaylist = !SMART_PLAYLIST_IDS.includes(id || "");
   const isFavoritesPlaylist = id === "favorites";
@@ -73,6 +82,7 @@ export default function PlaylistDetailScreen() {
   const [playlistMeta, setPlaylistMeta] = useState<PlaylistMeta | null>(null);
 
   const [mode, setMode] = useState<ScreenMode>("normal");
+  const didEnterSelectMode = useRef(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -145,6 +155,22 @@ export default function PlaylistDetailScreen() {
       loadPlaylistMeta();
     }
   }, [isFocused, loadSongs, loadPlaylistMeta]);
+
+  useEffect(() => {
+    if (mode === "select") {
+      didEnterSelectMode.current = true;
+      setIsSelectionModeActive(true);
+    } else if (didEnterSelectMode.current) {
+      didEnterSelectMode.current = false;
+      setIsSelectionModeActive(false);
+    }
+    return () => {
+      if (didEnterSelectMode.current) {
+        didEnterSelectMode.current = false;
+        setIsSelectionModeActive(false);
+      }
+    };
+  }, [mode, setIsSelectionModeActive]);
 
   const exitMode = () => {
     setMode("normal");
@@ -247,7 +273,10 @@ export default function PlaylistDetailScreen() {
         edges={["top", "left", "right"]}
       >
         <View style={styles.navRow}>
-          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={() => (mode !== "normal" ? exitMode() : router.back())}
+            activeOpacity={0.7}
+          >
             <Ionicons name="arrow-back" size={26} color={colors.text} />
           </TouchableOpacity>
 
@@ -338,7 +367,7 @@ export default function PlaylistDetailScreen() {
                 ]}
                 numberOfLines={1}
               >
-                {item.artist || "Local Audio"}
+                {item.artist || "Unknown"}
               </Text>
             </View>
 
@@ -397,7 +426,7 @@ export default function PlaylistDetailScreen() {
               style={[styles.songArtistLabel, { color: colors.textSecondary }]}
               numberOfLines={1}
             >
-              {item.artist || "Local Audio"}
+              {item.artist || "Unknown"}
             </Text>
           </View>
         </RNGHTouchableOpacity>
@@ -480,7 +509,7 @@ export default function PlaylistDetailScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              No tracks found matching this playlist filter rules yet.
+              No tracks added yet.
             </Text>
           }
           renderItem={
@@ -490,12 +519,7 @@ export default function PlaylistDetailScreen() {
       )}
 
       {mode === "select" && (
-        <View
-          style={[
-            styles.selectBar,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
-        >
+        <View style={[styles.selectBar, { backgroundColor: colors.surface }]}>
           <Text
             style={[styles.selectCountText, { color: colors.textSecondary }]}
           >
@@ -507,8 +531,8 @@ export default function PlaylistDetailScreen() {
             style={[
               styles.removeSelectedBtn,
               {
-                backgroundColor: "#E94560",
-                opacity: selectedIds.size === 0 ? 0.5 : 1,
+                backgroundColor: "#BF3054",
+                opacity: selectedIds.size === 0 ? 0.7 : 1,
               },
             ]}
           >
@@ -698,10 +722,10 @@ const styles = StyleSheet.create({
   },
   selectBar: {
     position: "absolute",
-    bottom: 96,
+    bottom: 25,
     left: 16,
     right: 16,
-    borderRadius: 14,
+    borderRadius: 24,
     borderWidth: 1,
     paddingVertical: 12,
     paddingHorizontal: 18,

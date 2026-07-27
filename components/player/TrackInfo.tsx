@@ -2,11 +2,11 @@ import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useRef } from "react";
 import {
-    Animated,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import TextTicker from "react-native-text-ticker";
 
@@ -65,7 +65,7 @@ export default function TrackInfo({
           style={[styles.songArtist, { color: colors.textSecondary }]}
           numberOfLines={1}
         >
-          {artist || "Unknown Artist"}
+          {artist || "Unknown"}
         </Text>
       </View>
       <TouchableOpacity
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     width: "100%",
     paddingHorizontal: 10,
-    marginVertical: 10,
+    marginVertical: 8,
   },
   metaBlock: {
     marginTop: 10,

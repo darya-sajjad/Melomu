@@ -35,7 +35,6 @@ interface AudioContextType {
   queue: Song[];
   currentIndex: number;
   isFavorite: boolean;
-  // ✨ Added Playback Settings Props
   gaplessPlayback: boolean;
   crossfadeDuration: number;
   setGaplessPlayback: (enabled: boolean) => Promise<void>;
@@ -91,7 +90,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const fadeCancelRef = useRef(false);
   const isTransitioningRef = useRef(false);
 
-  // Synchronize internal refs with state for UI components
   const updateQueueState = (newQueue: Song[], newIndex: number) => {
     queueRef.current = newQueue;
     indexRef.current = newIndex;
@@ -107,7 +105,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     repeatModeRef.current = repeatMode;
   }, [repeatMode]);
 
-  // Load saved gapless and crossfade settings from AsyncStorage
   useEffect(() => {
     const loadPlaybackSettings = async () => {
       try {
@@ -132,7 +129,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     await AsyncStorage.setItem("setting-gapless", JSON.stringify(enabled));
   };
 
-  // AFTER:
   const preloadNextTrack = async () => {
     const list = queueRef.current;
     if (!list.length || isPreloadingRef.current || isTransitioningRef.current)
@@ -175,7 +171,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     await AsyncStorage.setItem("setting-crossfade", seconds.toString());
   };
 
-  // Synchronize isFavorite whenever currentSong changes
   useEffect(() => {
     if (currentSong) {
       setIsFavorite(Boolean(currentSong.is_favorite));
@@ -245,7 +240,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
-    const steps = Math.max(30, Math.floor(durationSeconds * 30)); // 30 updates/sec for smoothness
+    const steps = Math.max(30, Math.floor(durationSeconds * 30));
     const stepTime = (durationSeconds * 1000) / steps;
     const volumeStep = (toVolume - fromVolume) / steps;
 
@@ -265,7 +260,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // AFTER:
   const loadAndPlayIndex = async (index: number) => {
     if (isTransitioningRef.current) {
       console.log("⏳ Blocked: transition already in progress");
@@ -284,18 +278,13 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const oldSound = soundRef.current;
 
-      // 1. IMMEDIATELY stop old sound to prevent overlap / ghost audio
       if (oldSound) {
         try {
           await oldSound.stopAsync();
-        } catch {
-          // Already stopped or unloaded
-        }
-        // Detach its callback so didJustFinish never fires after we leave
+        } catch {}
         oldSound.setOnPlaybackStatusUpdate(() => {});
       }
 
-      // 2. Only kill preload if it's NOT the song we're about to play
       if (nextSoundRef.current && preloadedIndexRef.current !== index) {
         nextSoundRef.current.unloadAsync().catch(() => {});
         nextSoundRef.current = null;
@@ -329,12 +318,10 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       setCurrentSong(song);
       setPosition(0);
 
-      // 3. Unload old sound now that new one is safely playing
       if (oldSound) {
         oldSound.unloadAsync().catch(() => {});
       }
 
-      // 4. Fade in new track (only if not gapless-preloaded at full volume)
       if (crossfadeDuration > 0 && !usedPreload) {
         fadeCancelRef.current = false;
         fadeVolume(soundToPlay, 0.1, 1.0, crossfadeDuration);
@@ -394,14 +381,12 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     loadAndPlayIndex(next);
   };
 
-  // AFTER:
   const playSong = async (song: Song, songList?: Song[]) => {
     if (isTransitioningRef.current) {
       console.log("⏳ Blocked playSong: transition in progress");
       return;
     }
 
-    // Kill any stale preload to prevent ghost audio
     if (nextSoundRef.current) {
       nextSoundRef.current.unloadAsync().catch(() => {});
       nextSoundRef.current = null;
@@ -604,20 +589,17 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const db = await dbAsync;
 
-      // 1. Fetch current favorite status
       const row: any = await db.getFirstAsync(
         "SELECT is_favorite FROM songs WHERE id = ?",
         [targetId],
       );
       const newStatus = row?.is_favorite ? 0 : 1;
 
-      // 2. Persist update in Database
       await db.runAsync("UPDATE songs SET is_favorite = ? WHERE id = ?", [
         newStatus,
         targetId,
       ]);
 
-      // 3. Update active song state if matching
       if (currentSong && currentSong.id === targetId) {
         setCurrentSong((prev) =>
           prev ? { ...prev, is_favorite: newStatus } : prev,
@@ -625,7 +607,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsFavorite(Boolean(newStatus));
       }
 
-      // 4. Update queue references to keep UI synced across tabs
       const updateList = (list: Song[]) =>
         list.map((s) =>
           s.id === targetId ? { ...s, is_favorite: newStatus } : s,
