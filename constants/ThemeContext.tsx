@@ -55,7 +55,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     loadThemeAndPreset();
   }, []);
 
-  // Compute effective mode: 'system' tracks OS, others respect the toggle
   const effectiveTheme: ThemeMode =
     activePreset === "system"
       ? systemColorScheme === "light"
@@ -79,7 +78,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     await AsyncStorage.setItem("user-preset", preset);
   };
 
-  // Generate dynamic color palettes for both Light & Dark modes per preset
   const colors = useMemo(() => {
     const isDark = effectiveTheme === "dark";
 

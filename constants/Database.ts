@@ -61,9 +61,7 @@ export async function initializeDatabase() {
     await db.execAsync(
       `ALTER TABLE songs ADD COLUMN artwork_source TEXT DEFAULT 'album';`,
     );
-  } catch {
-    // Column already exists — safe to ignore
-  }
+  } catch {}
 
   isDbInitialized = true;
   console.log("✅ Melomu Persistent Database completely active and locked!");

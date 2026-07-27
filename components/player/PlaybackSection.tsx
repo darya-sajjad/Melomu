@@ -120,7 +120,7 @@ export default function PlaybackSection({
           <View style={styles.iconWrapper}>
             <Ionicons
               name={repeatMode === "one" ? "repeat" : "repeat-outline"}
-              size={2}
+              size={25}
               color={repeatMode !== "off" ? colors.active : colors.primary}
             />
             {repeatMode === "one" && (
@@ -181,8 +181,8 @@ const styles = StyleSheet.create({
   },
   tinyBadgeCircle: {
     position: "absolute",
-    bottom: -2,
-    right: -4,
+    bottom: -4,
+    right: -3,
     width: 12,
     height: 12,
     borderRadius: 6,
