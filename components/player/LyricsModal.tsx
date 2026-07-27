@@ -42,40 +42,52 @@ export default function LyricsModal({
           style={[
             styles.lyricsHeaderNav,
             {
-              backgroundColor: colors.background,
-              height: insets.top + 56,
-              paddingTop: insets.top + 8,
+              height: insets.top,
+              paddingTop: insets.top,
             },
           ]}
-        >
-          <TouchableOpacity
-            onPress={onClose}
-            activeOpacity={0.7}
-            style={styles.backButtonTouchable}
-          >
-            <Ionicons name="chevron-down" size={28} color={colors.text} />
-          </TouchableOpacity>
-        </View>
+        />
 
         <View
           style={[
             styles.curvedLyricsCanvas,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            { backgroundColor: colors.surface, borderColor: colors.primary },
           ]}
         >
-          <View style={styles.panelMetaRow}>
-            <Text
-              style={[styles.panelSongTitle, { color: colors.text }]}
-              numberOfLines={1}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={onClose}
+              activeOpacity={0.7}
+              style={styles.backButtonTouchable}
             >
-              {songTitle}
-            </Text>
-            <Text
-              style={[styles.panelSongArtist, { color: colors.textSecondary }]}
-              numberOfLines={1}
-            >
-              {artist || "Unknown Artist"}
-            </Text>
+              <Ionicons name="chevron-down" size={28} color={colors.text} />
+            </TouchableOpacity>
+
+            <View style={styles.panelMetaRow}>
+              <View
+                pointerEvents="none"
+                style={{ width: "90%", overflow: "hidden" }}
+              >
+                <Text
+                  style={[styles.panelSongTitle, { color: colors.text }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {songTitle}
+                </Text>
+                <Text
+                  style={[
+                    styles.panelSongArtist,
+                    { color: colors.textSecondary },
+                  ]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {artist || "Unknown Artist"}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.headerRight} />
           </View>
 
           <ScrollView
@@ -83,7 +95,7 @@ export default function LyricsModal({
             contentContainerStyle={styles.lyricsScrollContainer}
           >
             <Text style={[styles.figmaLyricsText, { color: colors.text }]}>
-              {lyrics || "Searching for plain text lyrics lines..."}
+              {lyrics || "No lyrics found..."}
             </Text>
           </ScrollView>
         </View>
@@ -97,15 +109,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "transparent",
   },
-  lyricsHeaderNav: {
-    justifyContent: "center",
-    paddingHorizontal: 24,
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: 50,
+    marginTop: 24,
+    marginBottom: 20,
+    paddingHorizontal: 12,
   },
   backButtonTouchable: {
     width: 44,
     height: 44,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "flex-start",
+  },
+  headerRight: {
+    width: 44,
+  },
+  panelMetaRow: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  panelSongTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 2,
+    textAlign: "center",
+  },
+  panelSongArtist: {
+    fontSize: 12,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  lyricsHeaderNav: {
+    justifyContent: "center",
   },
   curvedLyricsCanvas: {
     flex: 1,
@@ -114,23 +152,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderBottomWidth: 0,
     overflow: "hidden",
-  },
-  panelMetaRow: {
-    alignItems: "center",
-    paddingTop: 24,
-    paddingBottom: 12,
-    paddingHorizontal: 28,
-  },
-  panelSongTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 2,
-    textAlign: "center",
-  },
-  panelSongArtist: {
-    fontSize: 14,
-    fontWeight: "500",
-    textAlign: "center",
   },
   lyricsScrollContainer: {
     paddingHorizontal: 28,

@@ -3,14 +3,7 @@ import { useAudio } from "@/constants/AudioContext";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useState } from "react";
-import {
-  Image,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import DraggableFlatList, {
   RenderItemParams,
   ScaleDecorator,
@@ -30,7 +23,6 @@ export default function QueueScreen() {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Split queue into upcoming items starting right after currentIndex
   const upcomingQueue = queue.slice(currentIndex + 1);
 
   const toggleSelect = (id: string) => {
@@ -93,7 +85,6 @@ export default function QueueScreen() {
               </Text>
             </TouchableOpacity>
 
-            {/* Drag Handle */}
             <TouchableOpacity
               onLongPress={drag}
               delayLongPress={100}
@@ -155,7 +146,7 @@ export default function QueueScreen() {
             }
           }}
         >
-          <Text style={[styles.clearBtnText, { color: colors.primary }]}>
+          <Text style={[styles.clearBtnText, { color: colors.text }]}>
             Clear Queue
           </Text>
         </TouchableOpacity>
@@ -167,7 +158,6 @@ export default function QueueScreen() {
     <GestureHandlerRootView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      {/* Draggable Queue List */}
       <DraggableFlatList
         data={upcomingQueue}
         onDragEnd={({ from, to }) => {
@@ -186,19 +176,17 @@ export default function QueueScreen() {
         contentContainerStyle={styles.scrollContent}
       />
 
-      {/* Bottom Action Bar (Removed "Add to Queue") */}
       {selectedIds.length > 0 && (
         <View
           style={[
             styles.bottomBar,
             {
-              backgroundColor: colors.surface + "F2",
-              borderTopColor: colors.border,
+              backgroundColor: colors.primary,
             },
           ]}
         >
           <TouchableOpacity onPress={handleBatchRemove}>
-            <Text style={[styles.bottomBarAction, { color: colors.primary }]}>
+            <Text style={[styles.bottomBarAction, { color: colors.texttwo }]}>
               Remove ({selectedIds.length})
             </Text>
           </TouchableOpacity>
@@ -211,7 +199,7 @@ export default function QueueScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "ios" ? 50 : 30,
+    paddingTop: 50,
   },
   iconBtn: {
     padding: 6,
@@ -269,7 +257,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
   },
   radioBtn: {
     paddingRight: 12,
@@ -296,14 +284,14 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     position: "absolute",
-    bottom: 30,
-    left: 0,
-    right: 0,
+    bottom: 35,
+    width: 130,
     flexDirection: "row",
+    alignSelf: "center",
     justifyContent: "center",
-    paddingHorizontal: 28,
-    paddingVertical: 18,
-    backgroundColor: "rgba(0,0,0,0.85)",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 30,
   },
   bottomBarAction: {
     fontSize: 15,

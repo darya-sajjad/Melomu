@@ -61,7 +61,7 @@ export default function BatchEditModal({
             styles.modalBox,
             {
               backgroundColor: colors.surface,
-              borderColor: colors.surface,
+              borderColor: colors.primary,
               marginBottom: 425,
             },
           ]}

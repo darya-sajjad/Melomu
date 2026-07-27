@@ -56,7 +56,6 @@ export default function PlaybackSection({
 
   return (
     <View>
-      {/* 1. Progress Deck / Slider */}
       <View style={styles.progressDeck}>
         <Slider
           style={{ width: "100%", height: 32 }}
@@ -64,7 +63,7 @@ export default function PlaybackSection({
           maximumValue={duration || 1}
           value={displayedPosition}
           minimumTrackTintColor={colors.primary}
-          maximumTrackTintColor={colors.border}
+          maximumTrackTintColor={colors.surface}
           thumbTintColor={colors.primary}
           onSlidingStart={() => setIsSeeking(true)}
           onValueChange={(val) => setSeekValue(val)}
@@ -83,7 +82,6 @@ export default function PlaybackSection({
         </View>
       </View>
 
-      {/* 2. Controls Row */}
       <View style={styles.controlsRow}>
         <TouchableOpacity activeOpacity={0.7} onPress={onToggleShuffle}>
           <Ionicons
@@ -94,7 +92,7 @@ export default function PlaybackSection({
         </TouchableOpacity>
 
         <TouchableOpacity activeOpacity={0.7} onPress={onPrevious}>
-          <Ionicons name="play-skip-back" size={26} color={colors.text} />
+          <Ionicons name="play-skip-back" size={26} color={colors.primary} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -105,13 +103,13 @@ export default function PlaybackSection({
           <Ionicons
             name={isPlaying ? "pause" : "play"}
             size={30}
-            color="#FFFFFF"
+            color={colors.background}
             style={!isPlaying ? { marginLeft: 3 } : null}
           />
         </TouchableOpacity>
 
         <TouchableOpacity activeOpacity={0.7} onPress={onNext}>
-          <Ionicons name="play-skip-forward" size={26} color={colors.text} />
+          <Ionicons name="play-skip-forward" size={26} color={colors.primary} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -122,7 +120,7 @@ export default function PlaybackSection({
           <View style={styles.iconWrapper}>
             <Ionicons
               name={repeatMode === "one" ? "repeat" : "repeat-outline"}
-              size={24}
+              size={2}
               color={repeatMode !== "off" ? colors.active : colors.primary}
             />
             {repeatMode === "one" && (
@@ -132,9 +130,7 @@ export default function PlaybackSection({
                   { backgroundColor: colors.primary },
                 ]}
               >
-                <Text
-                  style={[styles.tinyBadgeText, { color: colors.background }]}
-                >
+                <Text style={[styles.tinyBadgeText, { color: colors.texttwo }]}>
                   1
                 </Text>
               </View>
@@ -148,7 +144,7 @@ export default function PlaybackSection({
 
 const styles = StyleSheet.create({
   progressDeck: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   timeLabelsRow: {
     flexDirection: "row",
@@ -173,8 +169,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   repeatButtonContainer: {
-    width: 44,
-    height: 44,
     alignItems: "center",
     justifyContent: "center",
   },

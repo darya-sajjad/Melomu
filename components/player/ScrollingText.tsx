@@ -32,19 +32,19 @@ export const ScrollingText: React.FC<ScrollingTextProps> = ({
       return;
     }
 
-    const scrollDistance = textWidth - containerWidth + 24; // Extra padding
+    const scrollDistance = textWidth - containerWidth + 24;
     const duration = Math.max(3000, scrollDistance * 40);
 
     const animation = Animated.loop(
       Animated.sequence([
-        Animated.delay(1200), // Hold at start
+        Animated.delay(1200),
         Animated.timing(animatedValue, {
           toValue: -scrollDistance,
           duration: duration,
           easing: Easing.linear,
           useNativeDriver: true,
         }),
-        Animated.delay(1000), // Hold at end
+        Animated.delay(1000),
         Animated.timing(animatedValue, {
           toValue: 0,
           duration: duration,
@@ -74,7 +74,6 @@ export const ScrollingText: React.FC<ScrollingTextProps> = ({
       onLayout={onContainerLayout}
       pointerEvents="none"
     >
-      {/* Hidden text element used strictly for pixel measurement */}
       <Text
         style={[style, styles.hiddenMeasureText]}
         onLayout={onTextLayout}

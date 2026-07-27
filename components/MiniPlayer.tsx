@@ -61,7 +61,7 @@ export default function MiniPlayer() {
         onPress={() => router.push("/player")}
         style={[
           styles.content,
-          { backgroundColor: colors.surface, borderColor: colors.surface },
+          { backgroundColor: colors.surface, borderColor: colors.primary },
         ]}
       >
         <Image
@@ -93,7 +93,10 @@ export default function MiniPlayer() {
           </View>
 
           <View
-            style={[styles.progressTrack, { backgroundColor: colors.surface }]}
+            style={[
+              styles.progressTrack,
+              { backgroundColor: colors.surface, borderColor: colors.primary },
+            ]}
           >
             <View
               style={[
@@ -170,6 +173,7 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 4,
     borderRadius: 2,
+    borderWidth: 0.5,
     width: "100%",
     overflow: "hidden",
   },
