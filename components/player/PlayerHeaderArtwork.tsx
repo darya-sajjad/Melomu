@@ -51,12 +51,10 @@ export default function PlayerHeaderArtwork({
 
   const translateX = useSharedValue(0);
   const isDragging = useSharedValue(0);
-  const lastSwipeDirection = useSharedValue(0); // -1 = left (next), 1 = right (previous)
+  const lastSwipeDirection = useSharedValue(0);
 
-  // Entrance animation: when track changes, slide in from the opposite side of the swipe
   useEffect(() => {
     if (lastSwipeDirection.value !== 0) {
-      // Enter from the opposite side of where we exited
       translateX.value = -lastSwipeDirection.value * width * 0.5;
       translateX.value = withSpring(0, {
         damping: 15,
@@ -106,7 +104,6 @@ export default function PlayerHeaderArtwork({
           },
         );
       } else {
-        // Snap back to center
         translateX.value = withSpring(0, {
           damping: 20,
           stiffness: 200,
@@ -117,7 +114,6 @@ export default function PlayerHeaderArtwork({
   const animatedStyle = useAnimatedStyle(() => {
     const dragDistance = Math.abs(translateX.value);
 
-    // Scale down slightly as you drag away from center
     const dragScale = interpolate(
       dragDistance,
       [0, width * 0.5],
@@ -125,10 +121,8 @@ export default function PlayerHeaderArtwork({
       Extrapolation.CLAMP,
     );
 
-    // Subtle "lift" when finger first touches
     const liftScale = interpolate(isDragging.value, [0, 1], [1, 1.02]);
 
-    // Fade out as it approaches screen edge
     const opacity = interpolate(
       dragDistance,
       [0, width * 0.6],
@@ -147,14 +141,13 @@ export default function PlayerHeaderArtwork({
 
   return (
     <View>
-      {/* Navigation Header */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
           activeOpacity={0.7}
           style={styles.headerIcon}
         >
-          <Ionicons name="arrow-back" size={26} color={colors.text} />
+          <Ionicons name="arrow-back" size={28} color={colors.text} />
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: colors.text }]}>
@@ -164,7 +157,6 @@ export default function PlayerHeaderArtwork({
         <View style={styles.headerIconPlaceholder} />
       </View>
 
-      {/* Swipeable Artwork */}
       <GestureHandlerRootView style={styles.artworkContainer}>
         <GestureDetector gesture={panGesture}>
           <Animated.View style={[styles.shadowWrapper, animatedStyle]}>
@@ -190,6 +182,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     height: 56,
+    paddingBottom: 18,
   },
   headerIcon: {
     padding: 4,
@@ -205,7 +198,8 @@ const styles = StyleSheet.create({
   artworkContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 20,
+    paddingVertical: 24,
+    paddingBottom: 40,
   },
   shadowWrapper: {
     width: ARTWORK_SIZE,
