@@ -4,14 +4,14 @@ Melomu is a local-first music player built with [Expo](https://expo.dev) and Rea
 
 ## Features
 
-- **Local library** — import songs from device storage, with metadata (title, artist, album, genre, duration, artwork) read automatically via `music-metadata`
+- **Local library** — import songs from device storage, with metadata (title, artist, album, duration) read automatically via `music-metadata`
 - **Playback** — shuffle, repeat (off / one / all), queue management (reorder, add next, remove), gapless playback, and configurable crossfade
-- **Library browsing** — dedicated tabs for Songs, Albums, and Artists, with batch editing and swipeable song rows
+- **Library browsing** — dedicated tabs for Songs, Albums, and Artists, with batch editing and swipeable song rows for queuing
 - **Playlists** — create, edit, and manage custom playlists
-- **Favorites & recents** — quick access to most played, least played, recently played, and favorited tracks
+- **Smart Playlists** — quick access to most played, least played, recently played, and favorited tracks
 - **Lyrics** — synced/plain lyrics fetched and cached locally (via LRCLIB) for offline viewing
-- **Custom artwork** — override album art per song or per album
-- **Theming** — light/dark/automatic appearance with selectable theme presets
+- **Custom artwork** — add yours for song, album, artist
+- **Theming** — light/dark appearance with selectable theme presets
 - **Persistent storage** — songs, playlists, and lyrics are stored in a local SQLite database (`expo-sqlite`)
 
 ## Tech Stack
@@ -53,12 +53,14 @@ app/                  # File-based routes (Expo Router)
   queue.tsx            # Queue view
   modal.tsx
 
-components/           # UI components grouped by feature
+components/           # Various components grouped by screens
   Home/                # Playlist creation/editing modals
   library/             # Songs/Albums/Artists tabs, batch edit, swipeable rows
   player/              # Playback controls, artwork, track info, lyrics modal
   settings/            # Appearance, playback, backup, import/storage sections
   ui/                  # Shared themed primitives
+  AddToPlaylistModal/
+  Miniplayer/          
 
 constants/             # Core app logic
   AudioContext.tsx     # Playback engine, queue, shuffle/repeat, favorites
@@ -67,7 +69,7 @@ constants/             # Core app logic
   ThemeContext.tsx      # Theming
   Selectionmodecontext.tsx
 
-assets/                # App icons and sample audio
+assets/                # hardcoded images
 scripts/reset-project.js
 ```
 
