@@ -8,6 +8,7 @@ import { dbAsync } from "@/constants/Database";
 import { useTheme } from "@/constants/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
+import * as FileSystem from "expo-file-system/legacy";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -95,6 +96,22 @@ export default function HomeScreen() {
       loadCustomPlaylists();
     }
   }, [isFocused, loadSmartPlaylistMetrics, loadCustomPlaylists]);
+
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const info = await FileSystem.getInfoAsync(
+          FileSystem.documentDirectory + "onboarding_complete.json",
+        );
+        if (!info.exists) {
+          router.replace("./onboarding");
+        }
+      } catch (e) {
+        console.error("Onboarding check failed:", e);
+      }
+    };
+    checkOnboarding();
+  }, [router]);
 
   return (
     <SafeAreaView
