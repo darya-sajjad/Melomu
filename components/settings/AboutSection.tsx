@@ -56,7 +56,7 @@ export default function AboutSection() {
 
   const handleCheckForUpdates = () => {
     Alert.alert(
-      "Melomu is Up to Date! ✨",
+      "Melomu is Up to Date!",
       `You are currently running the latest version (v${appVersion}).`,
     );
   };

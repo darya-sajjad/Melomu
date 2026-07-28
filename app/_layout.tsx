@@ -6,7 +6,7 @@ import "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AudioProvider } from "@/constants/AudioContext";
-import { initializeDatabase, seedMockSongs } from "@/constants/Database";
+import { initializeDatabase } from "@/constants/Database";
 import { ThemeProvider, useTheme } from "@/constants/ThemeContext";
 
 export const unstable_settings = {
@@ -21,7 +21,6 @@ function AppContent() {
     async function setupApp() {
       try {
         await initializeDatabase();
-        await seedMockSongs();
       } catch (error) {
         console.error("Error starting database:", error);
       } finally {

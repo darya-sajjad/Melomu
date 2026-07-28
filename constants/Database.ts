@@ -66,7 +66,3 @@ export async function initializeDatabase() {
   isDbInitialized = true;
   console.log("✅ Melomu Persistent Database completely active and locked!");
 }
-
-export async function seedMockSongs() {
-  console.log("ℹ️ Dynamic User Collection Active. Skipping template seeding.");
-}
