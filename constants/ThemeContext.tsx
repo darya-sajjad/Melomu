@@ -88,28 +88,36 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
               ...darkColors,
               background: "#000000",
               surface: "#121212",
+              primary: "#dfdfdf",
               border: "#222222",
+              texttwo: "#121212",
             }
           : {
               ...lightColors,
               background: "#FFFFFF",
-              surface: "#F5F5F5",
-              border: "#E0E0E0",
+              surface: "#fefefe",
+              primary: "#121212",
+              border: "#e5e5e5",
+              texttwo: "#fefefe",
             };
 
       case "midnight":
         return isDark
           ? {
               ...darkColors,
-              background: "#0A0E17",
-              surface: "#111827",
-              border: "#1F2937",
+              background: "#030B19",
+              surface: "#143D5B",
+              primary: "#91C9E2",
+              border: "#143D5B",
+              texttwo: "#121212",
             }
           : {
               ...lightColors,
-              background: "#F0F4F8",
-              surface: "#E2E8F0",
-              border: "#CBD5E1",
+              background: "#E4F3F4",
+              surface: "#91C9E2",
+              primary: "#143D5B",
+              border: "#91C9E2",
+              texttwo: "#fefefe",
             };
 
       case "classic":

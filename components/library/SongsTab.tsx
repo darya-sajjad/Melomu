@@ -228,13 +228,7 @@ export default function SongsTab({
                       setAddingToPlaylistSong(item);
                       setIsAddToPlaylistVisible(true);
                     }}
-                  >
-                    {/*<Ionicons
-                      name="add-circle-outline"
-                      size={22}
-                      color={colors.textSecondary}
-                    />*/}
-                  </TouchableOpacity>
+                  ></TouchableOpacity>
                 )}
               </TouchableOpacity>
             </Swipeable>

@@ -176,9 +176,7 @@ export default function OnboardingScreen() {
               exactDurationMillis = status.durationMillis;
             }
             await sound.unloadAsync();
-          } catch {
-            // fallback
-          }
+          } catch {}
 
           const extractedArtPath = await extractEmbeddedArtwork(
             permanentPath,

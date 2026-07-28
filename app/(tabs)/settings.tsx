@@ -178,9 +178,7 @@ export default function SettingsScreen() {
               exactDurationMillis = status.durationMillis;
             }
             await sound.unloadAsync();
-          } catch {
-            // Duration fallback
-          }
+          } catch {}
 
           const extractedArtPath = await extractEmbeddedArtwork(
             permanentPath,

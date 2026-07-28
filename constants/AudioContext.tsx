@@ -89,6 +89,10 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const userQueueCountRef = useRef(0);
   const fadeCancelRef = useRef(false);
   const isTransitioningRef = useRef(false);
+  const listenedTimeRef = useRef(0);
+  const lastUpdateRef = useRef(0);
+  const playCountedRef = useRef(false);
+  const activeSongRef = useRef<Song | null>(null);
 
   const updateQueueState = (newQueue: Song[], newIndex: number) => {
     queueRef.current = newQueue;
@@ -169,6 +173,24 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const setCrossfadeDuration = async (seconds: number) => {
     setCrossfadeState(seconds);
     await AsyncStorage.setItem("setting-crossfade", seconds.toString());
+  };
+
+  const recordPlayIfNeeded = async (songId: string) => {
+    if (!playCountedRef.current) return;
+    try {
+      const db = await dbAsync;
+      const now = Date.now();
+      await db.runAsync(
+        "UPDATE songs SET play_count = play_count + 1, last_played = ? WHERE id = ?",
+        [now, songId],
+      );
+    } catch (err) {
+      console.error("Failed to record play:", err);
+    } finally {
+      playCountedRef.current = false;
+      listenedTimeRef.current = 0;
+      lastUpdateRef.current = 0;
+    }
   };
 
   useEffect(() => {
@@ -269,6 +291,15 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     const list = queueRef.current;
     if (!list.length || index < 0 || index >= list.length) return;
 
+    const previousSong = activeSongRef.current;
+    if (previousSong) {
+      await recordPlayIfNeeded(previousSong.id);
+    } else {
+      playCountedRef.current = false;
+      listenedTimeRef.current = 0;
+      lastUpdateRef.current = 0;
+    }
+
     isTransitioningRef.current = true;
     const song = list[index];
     updateQueueState(queueRef.current, index);
@@ -317,6 +348,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsPlaying(true);
       setCurrentSong(song);
       setPosition(0);
+      activeSongRef.current = song;
 
       if (oldSound) {
         oldSound.unloadAsync().catch(() => {});
@@ -334,6 +366,20 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
 
         setPosition(status.positionMillis);
         if (status.durationMillis) setDuration(status.durationMillis);
+
+        if (status.isPlaying) {
+          const now = Date.now();
+          if (lastUpdateRef.current > 0) {
+            listenedTimeRef.current += now - lastUpdateRef.current;
+          }
+          lastUpdateRef.current = now;
+
+          if (!playCountedRef.current && listenedTimeRef.current > 3000) {
+            playCountedRef.current = true;
+          }
+        } else {
+          lastUpdateRef.current = 0;
+        }
 
         if (
           gaplessPlayback &&
