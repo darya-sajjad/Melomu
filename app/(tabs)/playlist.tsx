@@ -95,13 +95,12 @@ export default function PlaylistDetailScreen() {
 
       if (id === "recent") {
         queryStr =
-          "SELECT * FROM songs WHERE last_played > 0 ORDER BY last_played DESC";
+          "SELECT * FROM songs WHERE last_played > 0 ORDER BY last_played DESC LIMIT 30";
       } else if (id === "most") {
         queryStr =
-          "SELECT * FROM songs WHERE play_count >= 3 ORDER BY play_count DESC";
+          "SELECT * FROM songs WHERE play_count > 0 ORDER BY play_count DESC LIMIT 30";
       } else if (id === "least") {
-        queryStr =
-          "SELECT * FROM songs WHERE play_count < 3 ORDER BY play_count ASC";
+        queryStr = "SELECT * FROM songs ORDER BY play_count ASC LIMIT 30";
       } else if (id === "favorites") {
         queryStr = "SELECT * FROM songs WHERE is_favorite = 1";
       } else if (id) {
