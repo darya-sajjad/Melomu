@@ -88,6 +88,7 @@ scripts/reset-project.js
 
 - Cloud backup/restore is currently disabled — it requires a custom native build and doesn't work in Expo Go.
 - Lyrics are fetched from [LRCLIB](https://lrclib.net/) and cached locally for offline use.
+- The images in the assets/ folder were sourced from Pinterest and do not belong to me — used for personal/demo purposes only.
 
 ## Learn More
 
